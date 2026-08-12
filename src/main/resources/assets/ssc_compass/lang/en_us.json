@@ -1,4 +1,6 @@
 {
+  "modmenu.nameTranslation.ssc_compass": "Shape Shifter's Compass",
+  "modmenu.descriptionTranslation.ssc_compass": "In-game AI assistant: reads your inventory / equipment / Trinkets / crafting grid on demand, and answers SSC / SSCA mechanics questions via a built-in knowledge base.",
   "ssc_compass.button.open": "AI Assistant",
   "ssc_compass.screen.title": "Shape Shifter's Compass",
   "ssc_compass.input.placeholder": "Ask something…",
