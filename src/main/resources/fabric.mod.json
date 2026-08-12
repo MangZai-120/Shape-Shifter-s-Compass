@@ -10,7 +10,7 @@
   "contact": {
     "sources": "https://github.com/MangZai-120/Shape-Shifter-s-Compass"
   },
-  "license": "AGPL-3.0-or-later",
+  "license": "MIT",
   "environment": "client",
   "entrypoints": {
     "client": [

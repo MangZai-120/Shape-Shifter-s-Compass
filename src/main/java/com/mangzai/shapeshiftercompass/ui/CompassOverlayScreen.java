@@ -29,6 +29,12 @@ public class CompassOverlayScreen extends Screen {
     private int thinkTick = 0;
     private int hoverGlyph = 0; // 0 无 / 1 放大 / 2 关闭
     private ButtonWidget sendBtn;
+    /** 输入区视觉布局（物理坐标，用于事件命中判定） */
+    private int visInputY;
+    private int visInputH;
+    private int visBtnX;
+    private int visBtnW;
+    private int visBtnH;
     /** 输入框 ↑/↓ 历史导航 */
     private final InputHistory inputHistory = new InputHistory();
 
@@ -41,13 +47,22 @@ public class CompassOverlayScreen extends Screen {
     protected void init() {
         CompassHud.setBoxOpen(true);
         CompassConfig cfg = CompassConfig.get();
+        // 小框引导提示常驻显示（无 AI 回答时显示「有什么可以让 Compass 帮到你的？」；
+        // 未配置 key 时追加「→ 点击此处前往设置」可点击直达设置）
+        CompassHud.setNoKeyHint(true);
         bw = cfg.hudBoxWidth;
         bh = cfg.hudBoxHeight;
         int[] p = CompassHud.computeBoxPos(this.width, this.height, bw, bh);
         bx = p[0];
         by = p[1];
 
-        input = new TextFieldWidget(this.textRenderer, bx + 3, by + bh - 20, bw - 40, 16,
+        // 输入框 + 发送按钮：widget 用真实标准尺寸，render 不 scale（视觉=widget=命中三者一致）
+        final int INPUT_H = 14;
+        int inputY = by + bh - INPUT_H - 4;
+        int btnW = 30;
+        int btnX = bx + bw - btnW - 2;
+        int inputW = btnX - (bx + 3) - 2;
+        input = new TextFieldWidget(this.textRenderer, bx + 3, inputY, inputW, INPUT_H,
                 Text.translatable("ssc_compass.input.placeholder"));
         input.setMaxLength(4000);
         input.setPlaceholder(Text.translatable("ssc_compass.input.placeholder"));
@@ -60,12 +75,20 @@ public class CompassOverlayScreen extends Screen {
             } else {
                 onSend();
             }
-        }).dimensions(bx + bw - 34, by + bh - 21, 32, 18).build();
-        addDrawableChild(sendBtn);
+        }).dimensions(btnX, inputY - 1, btnW, INPUT_H + 2).build();
+        this.visInputY = inputY;
+        this.visInputH = INPUT_H;
+        this.visBtnX = btnX;
+        this.visBtnW = btnW;
+        this.visBtnH = INPUT_H + 2;
     }
 
     private void onSend() {
         if (waiting) {
+            return;
+        }
+        // 未配置 API key：不记录消息、不进入等待，小框持续显示「尚未配置…」提示
+        if (!CompassConfig.get().hasKey()) {
             return;
         }
         String t = input.getText().trim();
@@ -116,13 +139,43 @@ public class CompassOverlayScreen extends Screen {
                 this.client.setScreen(new ChatScreen(null, false));
                 return true;
             }
+            // 点提示文字 → 仅在未配置 AI 时打开配置界面填 Key（已配置时常驻提示只是引导语，不可点）
+            if (!CompassConfig.get().hasKey()
+                    && CompassHud.isNoKeyHintHit(this.width, this.height, mx, my)) {
+                this.client.setScreen(new ConfigScreen(this));
+                return true;
+            }
             // 点小窗外空白 → 回到游戏控制，但保留小窗（HUD 继续显示）
             if (!(mx >= bx && mx <= bx + bw && my >= by && my <= by + bh)) {
                 this.close();
                 return true;
             }
         }
+        // 输入框/发送按钮已用真实屏幕坐标，可直接转发物理坐标
+        if (button == 0) {
+            if (my >= visInputY && my <= visInputY + visInputH
+                    && mx >= bx + 3 && mx <= bx + 3 + (bw - 40)) {
+                input.mouseClicked(mx, my, button);
+                setFocused(input);
+                return true;
+            }
+            if (my >= visInputY - 1 && my <= visInputY - 1 + visBtnH
+                    && mx >= visBtnX && mx <= visBtnX + visBtnW) {
+                sendBtn.mouseClicked(mx, my, button);
+                return true;
+            }
+        }
         return super.mouseClicked(mx, my, button);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        // 输入框真实坐标，直接转发物理坐标（拖拽选词）
+        if (input.isFocused() && mouseY >= visInputY && mouseY <= visInputY + visInputH
+                && mouseX >= bx + 3 && mouseX <= bx + 3 + (bw - 40)) {
+            return input.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+        }
+        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
     }
 
     @Override
@@ -202,13 +255,35 @@ public class CompassOverlayScreen extends Screen {
                 hoverGlyph = 2;
             }
         }
-        // 发送后等待 AI 回复期间，小框内容区清空（直到新回答返回）
-        CompassHud.drawBoxFrame(ctx, this.client, cfg, bx, by, bw, bh, true, scroll, waiting, hoverGlyph);
-        if (waiting || com.mangzai.shapeshiftercompass.ai.CompassState.isBusy()) {
-            ctx.drawText(this.textRenderer, Text.literal(thinkingText()),
-                    bx + 3, by + bh - 33, 0xFFAAAAAA, false);
+        // 无 AI 回答 OR 未配置 key 时，隐藏背景内容（历史回答/empty 文案），
+        // 由 drawNoKeyHint 完整替代（字号一致、跟随 hudFontPct）；waiting 时也隐藏（留给「思考中」动画）。
+        boolean noKey = !CompassConfig.get().hasKey();
+        boolean noAnswer = !waiting && !com.mangzai.shapeshiftercompass.ai.CompassState.isBusy()
+                && CompassHud.currentAnswer().isEmpty();
+        boolean showHint = noKey || noAnswer;
+        boolean hideContent = waiting || showHint;
+        CompassHud.drawBoxFrame(ctx, this.client, cfg, bx, by, bw, bh, true, scroll, hideContent, hoverGlyph);
+        // 显示引导提示，替代背景文案：
+        //   未配置 key（无论有无历史回答、是否新对话）→ 两行「尚未配置 AI…」+「→ 点击此处前往设置」
+        //   已配置但无回答 → 单行「有什么可以让 Compass 帮到你的？」
+        if (showHint) {
+            boolean hover = noKey
+                    && CompassHud.isNoKeyHintHit(this.width, this.height, mouseX, mouseY);
+            CompassHud.drawNoKeyHint(ctx, this.client, bx, by, bw, bh, hover);
         }
+        if (waiting || com.mangzai.shapeshiftercompass.ai.CompassState.isBusy()) {
+            // 「思考中 . . .」字号跟随 hudFontPct 缩放
+            String t = thinkingText();
+            float fs = Math.max(0.4f, cfg.hudFontPct / 100.0f);
+            ctx.getMatrices().push();
+            ctx.getMatrices().scale(fs, fs, 1.0f);
+            ctx.drawText(this.textRenderer, Text.literal(t),
+                    (int) ((bx + 3) / fs), (int) ((by + bh - 33) / fs), 0xFFAAAAAA, false);
+            ctx.getMatrices().pop();
+        }
+        // 输入框 + 发送按钮：标准尺寸直接渲染，不 scale（视觉=widget=命中一致）
         input.render(ctx, mouseX, mouseY, delta);
+        sendBtn.render(ctx, mouseX, mouseY, delta);
         super.render(ctx, mouseX, mouseY, delta);
     }
 

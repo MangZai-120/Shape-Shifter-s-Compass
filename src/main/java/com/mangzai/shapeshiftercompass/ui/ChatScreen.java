@@ -37,6 +37,11 @@ public class ChatScreen extends Screen {
     private final InputHistory inputHistory = new InputHistory();
     /** 发送/停止按钮引用（动态切换文字） */
     private ButtonWidget sendBtn;
+    /** 输入框视觉布局（物理坐标，用于事件命中判定与缩放转发） */
+    private int visInputX;
+    private int visInputY;
+    private int visInputW;
+    private int visInputH;
     private int scroll = 0;
     private int maxScroll = 0;
     private boolean autoScroll = true;
@@ -124,8 +129,16 @@ public class ChatScreen extends Screen {
             }
         }
 
-        int inputY = panelY + panelH - 24;
-        input = new TextFieldWidget(this.textRenderer, chatX + 4, inputY, chatW - 60, 18,
+        // 输入框：用真实屏幕坐标、固定像素尺寸（IME 读 getX/getY 为真实），不缩放。
+        final int INPUT_H = 18;
+        int visInputY = panelY + panelH - INPUT_H - 4;
+        int visInputW = chatW - 56;
+        int visInputX = chatX + 4;
+        this.visInputX = visInputX;
+        this.visInputY = visInputY;
+        this.visInputW = visInputW;
+        this.visInputH = INPUT_H;
+        input = new TextFieldWidget(this.textRenderer, visInputX, visInputY, visInputW, INPUT_H,
                 Text.translatable("ssc_compass.input.placeholder"));
         input.setMaxLength(4000);
         input.setPlaceholder(Text.translatable("ssc_compass.input.placeholder"));
@@ -140,7 +153,7 @@ public class ChatScreen extends Screen {
                         onSend();
                     }
                 })
-                .dimensions(chatX + chatW - 52, inputY - 1, 48, 20).build();
+                .dimensions(chatX + chatW - 50, visInputY - 1, 48, INPUT_H + 2).build();
         addDrawableChild(sendBtn);
 
         addDrawableChild(ButtonWidget.builder(Text.literal("⚙"), b -> this.client.setScreen(new ConfigScreen(this)))
@@ -164,6 +177,10 @@ public class ChatScreen extends Screen {
 
     private void onSend() {
         if (waiting || com.mangzai.shapeshiftercompass.ai.CompassState.isBusy()) {
+            return;
+        }
+        // 未配置 API key：不记录消息，由调用方提示用户先去配置
+        if (!com.mangzai.shapeshiftercompass.config.CompassConfig.get().hasKey()) {
             return;
         }
         String text = input.getText().trim();
@@ -370,12 +387,24 @@ public class ChatScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // 先处理内联编辑框的点击
+        // 1) 先处理内联编辑框的点击
         if (editField != null && mouseX >= editBubbleX && mouseX <= editBubbleX + editBubbleW
                 && mouseY >= editBubbleY && mouseY <= editBubbleY + editBubbleH) {
             return editField.mouseClicked(mouseX, mouseY, button);
         }
-        // 点击气泡进入内联编辑
+        // 2) 输入框用真实坐标，直接转发物理坐标
+        if (button == 0 && mouseX >= visInputX && mouseX <= visInputX + visInputW
+                && mouseY >= visInputY && mouseY <= visInputY + visInputH) {
+            input.mouseClicked(mouseX, mouseY, button);
+            setFocused(input);
+            return true;
+        }
+        // 3) 让按钮（⚙设置/⬜紧凑/♪语音/发送/会话列表×删除）优先处理点击；
+        //    这样点顶部「⚙设置」等按钮时不会被下方的气泡扫描误拦截进消息编辑模式。
+        if (super.mouseClicked(mouseX, mouseY, button)) {
+            return true;
+        }
+        // 4) super 未消费（点中的不是任何按钮/输入框）：再判断是否点中自己的消息气泡 → 进入内联编辑
         if (button == 0 && mouseX >= chatX && mouseX <= chatX + chatW) {
             for (int[] hb : msgHitboxes) {
                 if (mouseY >= hb[1] && mouseY <= hb[2]) {
@@ -387,12 +416,22 @@ public class ChatScreen extends Screen {
                 }
             }
         }
-        // 编辑中点击其它任何地方 → 取消编辑
+        // 5) 编辑中点击其它任何地方 → 取消编辑
         if (editField != null) {
             cancelEdit();
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return false;
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        // 输入框真实坐标，直接转发物理坐标（拖拽选词）
+        if (input.isFocused() && mouseX >= visInputX && mouseX <= visInputX + visInputW
+                && mouseY >= visInputY && mouseY <= visInputY + visInputH) {
+            return input.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+        }
+        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
     }
 
     /** 在指定用户气泡位置开启内联编辑框。 */
@@ -528,8 +567,12 @@ public class ChatScreen extends Screen {
         }
         if (waiting || com.mangzai.shapeshiftercompass.ai.CompassState.isBusy()) {
             if (typingMsgIndex < 0 && y <= bottom) {
+                // 「思考中 . . .」字号跟随 chatFontPct 缩放
+                ctx.getMatrices().push();
+                ctx.getMatrices().scale(cfs, cfs, 1.0f);
                 ctx.drawTextWithShadow(this.textRenderer, Text.literal(thinkingText()),
-                        chatX + 6, y, 0xFFAAAAAA);
+                        (int) ((chatX + 6) / cfs), (int) (y / cfs), 0xFFAAAAAA);
+                ctx.getMatrices().pop();
                 y += 12;
             }
         }
@@ -550,6 +593,7 @@ public class ChatScreen extends Screen {
             ctx.fill(trackX, barY, trackX + 2, barY + barH, 0xFF888888);
         }
 
+        // 输入框：标准尺寸直接渲染，不 scale（视觉=widget=命中三者一致，IME 正常）
         input.render(ctx, mouseX, mouseY, delta);
         // 内联编辑框渲染（高亮背景）
         if (editField != null) {

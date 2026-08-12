@@ -164,21 +164,24 @@ public class WebSearchTool implements CompassTool {
     /** 解析 Bing 结果页：提取每条结果的标题/链接/摘要，wiki 类结果优先排前。 */
     private String parseBing(String html) {
         List<String[]> results = new ArrayList<>();
-        String[] blocks = html.split("<li class=\"b_algo\">");
-        Pattern link = Pattern.compile("<h2>.*?<a[^>]+href=\"(https?://[^\"]+)\"[^>]*>(.*?)</a>", Pattern.DOTALL);
+        // Bing 每条结果标题：<h2 ...><a ... href="http...">标题</a></h2>；直接全局提取，不依赖 li 分块
+        // （Bing 实际是 <li class="b_algo" data-id ...>，li 与 h2 都带额外属性，旧的精确串分割/裸 <h2> 会全部失配）
+        Matcher m = Pattern.compile("<h2[^>]*>\\s*<a[^>]*href=\"(https?://[^\"]+)\"[^>]*>(.*?)</a>", Pattern.DOTALL)
+                .matcher(html);
         Pattern para = Pattern.compile("<p[^>]*>(.*?)</p>", Pattern.DOTALL);
-        for (int i = 1; i < blocks.length && results.size() < 8; i++) {
-            Matcher lm = link.matcher(blocks[i]);
-            if (!lm.find()) {
+        while (m.find() && results.size() < 8) {
+            String u = m.group(1);
+            String t = stripHtml(m.group(2));
+            // 跳过空标题与 Bing 内部/跳转链接
+            if (t.isEmpty() || u.contains("bing.com") || u.contains("go.microsoft.com") || u.contains("microsofttranslator")) {
                 continue;
             }
-            String u = lm.group(1);
-            String t = stripHtml(lm.group(2));
-            if (t.isEmpty()) {
-                continue;
+            // 摘要：标题之后邻近的段落（<p>），距离过远视为不属于该结果
+            String s = "";
+            Matcher pm = para.matcher(html);
+            if (pm.find(m.end()) && pm.start() - m.end() < 800) {
+                s = stripHtml(pm.group(1));
             }
-            Matcher pm = para.matcher(blocks[i]);
-            String s = pm.find() ? stripHtml(pm.group(1)) : "";
             results.add(new String[]{t, u, s});
         }
         if (results.isEmpty()) {

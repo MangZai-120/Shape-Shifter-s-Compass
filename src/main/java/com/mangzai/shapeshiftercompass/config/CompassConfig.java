@@ -22,6 +22,10 @@ public class CompassConfig {
     public double temperature = 0.7;
     public int maxTokens = 1024;
     public int maxHistory = 20;
+    /** 思考模式（reasoning_effort）：关闭则不传该字段；开启时按档位传给支持思考的模型（如 GLM-5.2） */
+    public boolean thinkingEnabled = false;
+    /** 思考深度档位：minimal / low / medium / high / xhigh / max */
+    public String reasoningEffort = "medium";
 
     // HUD 布局
     public int hudBallX = -1;

@@ -22,8 +22,33 @@ public final class CompassHud {
             || net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("ssc_addon");
     private static String lastAnswer = "";
     private static boolean boxOpen = false;
+    /** 是否显示「未配置 AI」可点击提示（唤起小窗时若无 key 则置 true）。 */
+    private static boolean noKeyHint = false;
 
     private CompassHud() {}
+
+    public static void setNoKeyHint(boolean v) {
+        noKeyHint = v;
+    }
+
+    public static boolean isNoKeyHint() {
+        return noKeyHint;
+    }
+
+    /** 判定点击是否落在 no_key 提示文字区域内（物理坐标）。 */
+    public static boolean isNoKeyHintHit(int sw, int sh, double mx, double my) {
+        if (!noKeyHint) return false;
+        com.mangzai.shapeshiftercompass.config.CompassConfig cfg =
+                com.mangzai.shapeshiftercompass.config.CompassConfig.get();
+        int[] p = computeBoxPos(sw, sh, cfg.hudBoxWidth, cfg.hudBoxHeight);
+        int titleH = 13;
+        int inputH = 22; // interactive 小窗底部输入区
+        // 提示文字占据内容区上半部分（标题栏下方到输入框上方）
+        int contentTop = p[1] + titleH + 2;
+        int contentBottom = p[1] + cfg.hudBoxHeight - inputH - 2;
+        return mx >= p[0] && mx <= p[0] + cfg.hudBoxWidth
+                && my >= contentTop && my <= contentBottom;
+    }
 
     public static void register() {
         HudRenderCallback.EVENT.register((ctx, tickDelta) -> {
@@ -114,9 +139,15 @@ public final class CompassHud {
         if (cfg.hudVisible && boxOpen) {
             int[] p = computeBoxPos(sw, sh, cfg.hudBoxWidth, cfg.hudBoxHeight);
             boolean busy = com.mangzai.shapeshiftercompass.ai.CompassState.isBusy();
-            // AI 生成中（用户已退出小框）：内容区清空，只显示「思考中 · · ·」
-            drawBoxFrame(ctx, MinecraftClient.getInstance(), cfg, p[0], p[1], cfg.hudBoxWidth, cfg.hudBoxHeight, false, 0, busy, 0);
-            if (busy) {
+            boolean noKey = !cfg.hasKey();
+            // 未配置 key 或 AI 生成中：隐藏背景内容（历史回答/empty），由提示替代
+            boolean hideContent = busy || noKey;
+            drawBoxFrame(ctx, MinecraftClient.getInstance(), cfg, p[0], p[1], cfg.hudBoxWidth, cfg.hudBoxHeight, false, 0, hideContent, 0);
+            if (noKey) {
+                // 未配置：常驻显示「尚未配置 AI…」+「→ 点击此处前往设置」（替代背景文案）
+                drawNoKeyHint(ctx, MinecraftClient.getInstance(), p[0], p[1], cfg.hudBoxWidth, cfg.hudBoxHeight, false);
+            } else if (busy) {
+                // AI 生成中（用户已退出小框）：内容区清空，只显示「思考中 · · ·」
                 int tick = thinkingTick();
                 ctx.drawText(MinecraftClient.getInstance().textRenderer,
                         Text.literal(thinkingText(tick)),
@@ -130,7 +161,58 @@ public final class CompassHud {
         return (int) ((System.currentTimeMillis() / 100L) % 26);
     }
 
-    /** HUD 思考文字（带动态点 ·，点间空格）。 */
+    /**
+     * 在小窗内容区绘制常驻引导提示（仅 CompassOverlayScreen 调用）。
+     * 字号跟随 hudFontPct 缩放（与 drawBoxFrame 内容文字一致）。
+     * - 已配置 key 且无回答：单行「有什么可以让 Compass 帮到你的？」（浅蓝引导语）
+     * - 未配置 key：两行替代背景 empty —— 第一行「尚未配置 AI…」橙黄，第二行「→ 点击此处前往设置」可点击
+     * 判定 mouseOver 用于 hover 高亮：鼠标停在提示上时改用亮色（未配置时提示可点）。
+     */
+    public static void drawNoKeyHint(DrawContext ctx, MinecraftClient mc,
+            int px, int py, int boxW, int boxH, boolean mouseOver) {
+        TextRenderer tr = mc.textRenderer;
+        int titleH = 13;
+        com.mangzai.shapeshiftercompass.config.CompassConfig cfg =
+                com.mangzai.shapeshiftercompass.config.CompassConfig.get();
+        float fscale = Math.max(0.4f, cfg.hudFontPct / 100.0f);
+        boolean noKey = !cfg.hasKey();
+        // 换行宽度（逻辑坐标）与 drawBoxFrame 内容文字一致
+        int wrapW = Math.max(20, (int) ((boxW - 6) / fscale));
+
+        ctx.getMatrices().push();
+        ctx.getMatrices().scale(fscale, fscale, 1.0f);
+        int lx = (int) ((px + 3) / fscale);
+        int ly = (int) ((py + titleH + 4) / fscale);
+
+        if (noKey) {
+            // 未配置：第一段「尚未配置 AI…」橙黄（hover 金），按框宽自动换行
+            int color1 = mouseOver ? 0xFFFFD700 : 0xFFFFAA00;
+            for (OrderedText line : tr.wrapLines(Text.translatable("ssc_compass.msg.no_key_hint"), wrapW)) {
+                ctx.drawText(tr, line, lx, ly, color1, false);
+                ly += 9;
+            }
+            // 第二段「→ 点击此处前往设置」浅灰（hover 白），空一行后同样换行
+            ly += 4;
+            int color2 = mouseOver ? 0xFFFFFFFF : 0xFFCCCCCC;
+            for (OrderedText line : tr.wrapLines(Text.translatable("ssc_compass.msg.no_key_hint_click"), wrapW)) {
+                ctx.drawText(tr, line, lx, ly, color2, false);
+                ly += 9;
+            }
+            // 第三段「推荐使用 DeepSeek V4 Flash」淡青色，空一行后换行
+            ly += 4;
+            for (OrderedText line : tr.wrapLines(Text.translatable("ssc_compass.msg.no_key_hint_recommend"), wrapW)) {
+                ctx.drawText(tr, line, lx, ly, 0xFF9AD0FF, false);
+                ly += 9;
+            }
+        } else {
+            // 已配置：浅蓝引导语（与背景 empty 同文案），按框宽自动换行
+            for (OrderedText line : tr.wrapLines(Text.translatable("ssc_compass.overlay.empty"), wrapW)) {
+                ctx.drawText(tr, line, lx, ly, 0xFFCCE4FF, false);
+                ly += 9;
+            }
+        }
+        ctx.getMatrices().pop();
+    }
     private static String thinkingText(int tick) {
         int phase = tick / 5;
         if (phase > 3) {
@@ -236,7 +318,7 @@ public final class CompassHud {
         }
     }
 
-    /** 当前对话的最新一条 AI 回答（无则回退到 lastAnswer）。 */
+    /** 当前对话的最新一条 AI 回答；空对话或无回答时返回空串（渲染层显示默认提示，不残留上一个对话的内容）。 */
     public static String currentAnswer() {
         try {
             com.mangzai.shapeshiftercompass.conversation.Conversation c =
@@ -248,9 +330,12 @@ public final class CompassHud {
                         return m.content;
                     }
                 }
+                // 当前对话存在但没有 AI 回答（空对话）→ 空串，显示默认提示，不残留别的对话内容
+                return "";
             }
         } catch (Exception ignored) {
         }
+        // 仅当前对话读取失败/为 null 的异常情况才兜底
         return lastAnswer;
     }
 

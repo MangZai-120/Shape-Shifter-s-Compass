@@ -42,6 +42,17 @@ public class EquipmentTool implements CompassTool {
         }
         ItemStack off = mc.player.getOffHandStack();
         sb.append("副手: ").append(off.isEmpty() ? "无" : (off.getName().getString() + " x" + off.getCount()));
+        // 副手若是食物，附带 AppleSkin 风格数值（手持食物时尤其有用）
+        String offFood = FoodInfo.describeIfFood(off, mc.player);
+        if (!offFood.isEmpty()) {
+            sb.append('\n').append(offFood);
+        }
+        // 主手食物也一并报告（玩家常把食物拿在手里准备吃）
+        ItemStack mainHand = mc.player.getMainHandStack();
+        String mainFood = FoodInfo.describeIfFood(mainHand, mc.player);
+        if (!mainFood.isEmpty()) {
+            sb.append("\n主手").append(mainFood);
+        }
         return sb.toString();
     }
 }

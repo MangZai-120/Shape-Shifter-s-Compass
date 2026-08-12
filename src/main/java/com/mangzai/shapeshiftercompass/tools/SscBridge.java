@@ -59,4 +59,59 @@ public final class SscBridge {
         }
         return out;
     }
+
+    /**
+     * 应用当前形态的 apoli:modify_food power，计算某食物经形态修正后的真实回复量。
+     * @param player 玩家（用于读取其持有的 ModifyFoodPower）
+     * @param stack  食物物品堆（用于 doesApply 判定 item_condition）
+     * @param baseHunger 食物基础饥饿值
+     * @param baseSatMod 食物基础饱和系数
+     * @return [修正后饥饿值, 修正后饱和系数, 是否被形态设为可饱腹时吃, 备注]; Apoli 未就绪时返回原值。
+     */
+    public static Object[] applyFormFoodModifiers(PlayerEntity player, net.minecraft.item.ItemStack stack,
+                                                  int baseHunger, float baseSatMod) {
+        String note = "";
+        boolean alwaysEdible = false;
+        double hunger = baseHunger;
+        double satMod = baseSatMod;
+        try {
+            Class<?> phcClass = Class.forName("io.github.apace100.apoli.component.PowerHolderComponent");
+            Object key = phcClass.getField("KEY").get(null);
+            Object comp = key.getClass().getMethod("get", Object.class).invoke(key, player);
+            Class<?> mfp = Class.forName("io.github.apace100.apoli.power.ModifyFoodPower");
+            Object listObj = comp.getClass().getMethod("getPowers", Class.class).invoke(comp, mfp);
+            java.util.List<?> powers = (java.util.List<?>) listObj;
+            boolean anyApplied = false;
+            for (Object power : powers) {
+                // doesApply(ItemStack) 判断该 power 是否对此食物生效
+                boolean does = (boolean) power.getClass().getMethod("doesApply", net.minecraft.item.ItemStack.class)
+                        .invoke(power, stack);
+                if (!does) {
+                    continue;
+                }
+                anyApplied = true;
+                // getFoodModifiers() → List<Modifier>，逐个 apply 到 hunger
+                Object foodMods = power.getClass().getMethod("getFoodModifiers").invoke(power);
+                for (Object mod : (java.util.List<?>) foodMods) {
+                    hunger = (double) mod.getClass().getMethod("apply", net.minecraft.entity.Entity.class, double.class)
+                            .invoke(mod, player, hunger);
+                }
+                // getSaturationModifiers() → 逐个 apply 到 satMod
+                Object satMods = power.getClass().getMethod("getSaturationModifiers").invoke(power);
+                for (Object mod : (java.util.List<?>) satMods) {
+                    satMod = (double) mod.getClass().getMethod("apply", net.minecraft.entity.Entity.class, double.class)
+                            .invoke(mod, player, satMod);
+                }
+                if ((boolean) power.getClass().getMethod("doesMakeAlwaysEdible").invoke(power)) {
+                    alwaysEdible = true;
+                }
+            }
+            if (anyApplied) {
+                note = "（已按当前形态的 modify_food 加成修正）";
+            }
+        } catch (Throwable ignored) {
+            // Apoli 未就绪或 API 变动：返回原值
+        }
+        return new Object[]{hunger, satMod, alwaysEdible, note};
+    }
 }
