@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "ssc_compass",
+  "version": "${version}",
+  "name": "Shape Shifter's Compass",
+  "description": "游戏内 AI 助手：按你的指令读取自己的物品栏/装备/Trinkets/合成栏，结合 SSC/SSCA 知识答疑。",
+  "authors": [
+    "MangZai-120"
+  ],
+  "contact": {
+    "sources": "https://github.com/MangZai-120/Shape-Shifter-s-Compass"
+  },
+  "license": "AGPL-3.0-or-later",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.mangzai.shapeshiftercompass.ShapeShifterCompass"
+    ]
+  },
+  "mixins": [
+    "ssc_compass.client.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "1.20.1",
+    "java": ">=17",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "trinkets": "*",
+    "ssc_addon": "*"
+  }
+}
