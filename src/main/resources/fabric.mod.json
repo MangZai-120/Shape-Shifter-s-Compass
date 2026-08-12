@@ -11,6 +11,7 @@
     "sources": "https://github.com/MangZai-120/Shape-Shifter-s-Compass"
   },
   "license": "MIT",
+  "icon": "assets/ssc_compass/icon.png",
   "environment": "client",
   "entrypoints": {
     "client": [
