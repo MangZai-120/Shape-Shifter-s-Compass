@@ -25,6 +25,7 @@
   "ssc_compass.config.model": "模型 (model)",
   "ssc_compass.config.thinking": "思考模式",
   "ssc_compass.config.thinking_level": "思考深度",
+  "ssc_compass.config.deepseek_topup": "DeepSeek 开放平台（充值 / API Key）",
   "ssc_compass.config.save": "保存",
   "ssc_compass.config.saved": "已保存",
   "ssc_compass.button.voice": "语音",

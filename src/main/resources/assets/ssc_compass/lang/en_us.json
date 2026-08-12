@@ -25,6 +25,7 @@
   "ssc_compass.config.model": "Model",
   "ssc_compass.config.thinking": "Thinking",
   "ssc_compass.config.thinking_level": "Thinking level",
+  "ssc_compass.config.deepseek_topup": "DeepSeek Platform (Top up / API Key)",
   "ssc_compass.config.save": "Save",
   "ssc_compass.config.saved": "Saved",
   "ssc_compass.button.voice": "Voice",
