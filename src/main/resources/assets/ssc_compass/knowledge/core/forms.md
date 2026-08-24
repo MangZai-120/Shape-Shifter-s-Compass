@@ -1,5 +1,7 @@
 # 幻形者诅咒（SSC/SSCA）形态与变形指令
 
+> **数据库更新时间：2026-08-24**（数据来源：SSC 原版 1.10.0 源码 lang 与 SSCA 8.0.0-beta.2 源码 `SscAddonForms.register()` / `FormIdentifiers` / `zh_cn.json`，依照代码逐条核对）
+
 本页给出所有形态的准确 ID、官方名，以及如何变形、为什么改血量上限/饱食度会「看起来没生效」。变形需 OP / 作弊模式。
 
 ## 变形指令
@@ -52,6 +54,9 @@
 - `my_addon:ocelot_wind_spirit` = 风灵
 - `my_addon:ocelot_nova` = 朔望
 - `my_addon:spider_moon_weaver` = 月织蛛
+- `my_addon:spider_salticidae` = 跳蛛
+- `my_addon:wild_cat_nightmare` = 食梦魔
+- `my_addon:snow_fox_frostspine` = 寒棘狐
 
 （注意区分：原版的 `shape-shifter-curse:allay_sp` 是「悦灵形态(sp)」，SSCA 的 `my_addon:allay_sp` 是「SP悦灵」，两者不同。）
 

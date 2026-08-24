@@ -271,7 +271,7 @@ public final class CompassHud {
         ctx.fill(px, py, px + boxW, py + boxH, alpha);
         ctx.drawBorder(px, py, boxW, boxH, 0xFF4A8ACA);
         ctx.fill(px + 1, py + 1, px + boxW - 1, py + titleH, 0x40FFFFFF);
-        // hover 高亮：放大/关闭图标区域画深色背景（类 Windows 选中提示）
+        // hover 高亮：放大 ▢ / 关闭 ✕ 图标区域画深色背景（类 Windows 选中提示）
         if (hoverGlyph == 1) {
             ctx.fill(px + boxW - 29, py + 1, px + boxW - 15, py + titleH, 0x80303030);
         } else if (hoverGlyph == 2) {

@@ -57,6 +57,10 @@ public class ChatScreen extends Screen {
     private int panelH;
 
     private final List<int[]> msgHitboxes = new ArrayList<>();
+    /** AI 消息「复制」按钮点击区：[消息索引, x1, y1, x2, y2]。 */
+    private final List<int[]> copyHitboxes = new ArrayList<>();
+    /** 「已复制」提示显示到期时间戳（System.currentTimeMillis）。 */
+    private long copiedTipUntil = 0;
 
     public ChatScreen(Screen parent) {
         this(parent, false);
@@ -102,7 +106,14 @@ public class ChatScreen extends Screen {
                 this.clearAndInit();
             }).dimensions(listX, panelY + 2, listW, 16).build());
 
-            int y = panelY + 22;
+            // 打开本地聊天记录文件夹（config/ssc_compass，conversations.json 所在）
+            addDrawableChild(ButtonWidget.builder(Text.translatable("ssc_compass.chat.open_logs"),
+                            b -> net.minecraft.util.Util.getOperatingSystem().open(ConversationStore.dir().toFile()))
+                    .dimensions(listX, panelY + 20, listW, 16)
+                    .tooltip(Tooltip.of(Text.translatable("ssc_compass.chat.open_logs.tip")))
+                    .build());
+
+            int y = panelY + 40;
             for (Conversation c : new ArrayList<>(ConversationStore.all())) {
                 boolean cur = c == conv();
                 String label = (cur ? "▶" : "") + c.title;
@@ -404,6 +415,17 @@ public class ChatScreen extends Screen {
         if (super.mouseClicked(mouseX, mouseY, button)) {
             return true;
         }
+        // 3.5) AI 消息「复制」按钮：复制整条到系统剪贴板
+        if (button == 0) {
+            for (int[] hb : copyHitboxes) {
+                if (mouseX >= hb[1] && mouseX <= hb[3] && mouseY >= hb[2] && mouseY <= hb[4]) {
+                    ChatMessage cm = conv().messages.get(hb[0]);
+                    this.client.keyboard.setClipboard(cm.content == null ? "" : cm.content);
+                    copiedTipUntil = System.currentTimeMillis() + 1500;
+                    return true;
+                }
+            }
+        }
         // 4) super 未消费（点中的不是任何按钮/输入框）：再判断是否点中自己的消息气泡 → 进入内联编辑
         if (button == 0 && mouseX >= chatX && mouseX <= chatX + chatW) {
             for (int[] hb : msgHitboxes) {
@@ -524,6 +546,7 @@ public class ChatScreen extends Screen {
         int wrapW = Math.max(20, (int) (maxBubbleW / cfs));
 
         msgHitboxes.clear();
+        copyHitboxes.clear();
         ctx.enableScissor(chatX, top, chatX + chatW, bottom);
         int y = top - scroll;
         for (int i = 0; i < c.messages.size(); i++) {
@@ -532,7 +555,8 @@ public class ChatScreen extends Screen {
                 continue;
             }
             boolean self = "user".equals(m.role);
-            String content = m.content == null ? "" : m.content;
+            String fullContent = m.content == null ? "" : m.content;
+            String content = fullContent;
             if (i == typingMsgIndex && typingChars < content.length()) {
                 content = content.substring(0, Math.max(0, typingChars));
             }
@@ -542,7 +566,9 @@ public class ChatScreen extends Screen {
                 textW = Math.max(textW, this.textRenderer.getWidth(line));
             }
             int bw = (int) (textW * cfs) + 10;
-            int bh = Math.max(1, lines.size()) * lineHs + 6;
+            // AI 气泡在底部预留一小行放复制图标 ❐；用户气泡保持原高
+            int iconPad = self ? 0 : 10;
+            int bh = Math.max(1, lines.size()) * lineHs + 6 + iconPad;
             int bx = self ? (chatX + chatW - 6 - bw) : (chatX + 6);
             int yStart = y;
             if (y + bh >= top && y <= bottom) {
@@ -562,8 +588,24 @@ public class ChatScreen extends Screen {
             }
             if (self) {
                 msgHitboxes.add(new int[]{i, yStart, y + bh});
+                y += bh + 4;
+            } else {
+                // AI 消息：气泡内右下角画复制 ❐ 图标按钮（打字机未打完/编辑中/空消息不画）
+                boolean fullyShown = !(i == typingMsgIndex && typingChars < fullContent.length());
+                if (i != editingIndex && fullyShown && !fullContent.isEmpty()
+                        && y + bh >= top && y + bh <= bottom) {
+                    int iconW = this.textRenderer.getWidth("❐");
+                    int iconH = 8;
+                    int cbx = bx + bw - iconW - 4;
+                    int cby = y + bh - iconH - 2;
+                    boolean hover = mouseX >= cbx - 1 && mouseX <= cbx + iconW + 1
+                            && mouseY >= cby - 1 && mouseY <= cby + iconH + 1;
+                    ctx.drawTextWithShadow(this.textRenderer, Text.literal("❐"),
+                            cbx, cby, hover ? 0xFFFFFFFF : 0xFFB0E0B0);
+                    copyHitboxes.add(new int[]{i, cbx - 1, cby - 1, cbx + iconW + 1, cby + iconH + 1});
+                }
+                y += bh + 4;
             }
-            y += bh + 4;
         }
         if (waiting || com.mangzai.shapeshiftercompass.ai.CompassState.isBusy()) {
             if (typingMsgIndex < 0 && y <= bottom) {
@@ -602,6 +644,12 @@ public class ChatScreen extends Screen {
             editField.render(ctx, mouseX, mouseY, delta);
             ctx.drawTextWithShadow(this.textRenderer, Text.literal("↵ 确认 · 点外面取消"),
                     chatX + 4, editBubbleY + editBubbleH + 2, 0xFFFFC107);
+        }
+        // 「已复制」瞬时提示
+        if (System.currentTimeMillis() < copiedTipUntil) {
+            ctx.drawCenteredTextWithShadow(this.textRenderer,
+                    Text.translatable("ssc_compass.chat.copied"),
+                    chatX + chatW / 2, panelY + panelH - 30, 0xFF7FFF7F);
         }
         super.render(ctx, mouseX, mouseY, delta);
     }

@@ -79,7 +79,17 @@ public class Conversation {
             + "get_food_info 支持物品 id（minecraft:cooked_beef）或中文名（牛排），不依赖该食物是否在背包。"
             + "背包内已有的食物，get_inventory/get_equipment 也会附带同样的精确数值。"
             + "据查询到的数值如实回答；若该形态免疫饱和度（见 [恢复饥饿] 列表），"
-            + "明确指出普通食物对它无效、应改用能量药水。";
+            + "明确指出普通食物对它无效、应改用能量药水。"
+            + "[知识库与纠错] 回答 SSC/SSCA 的形态、物品、技能、机制等问题时，优先检索本地知识库"
+            + "（query_knowledge 查机制/形态、query_recipe 查配方）作答，知识库内容依据模组代码与百科整理、通常准确。"
+            + "但如果玩家质疑知识库有误（说「这个数据不对 / 你说错了 / 实际不是这样」），既不要固执己见、也不要盲目顺从——"
+            + "先调用 web_search 联网核对该模组的官方 wiki 或 MC 百科（mcmod.cn）等权威页面的实际数据来验证："
+            + "若确认是知识库过时或有误，以联网核实的结果为准，并向玩家说明是查证后更正的；"
+            + "若联网结果与知识库一致，礼貌地把证据来源（wiki / 百科的页面或出处）告诉玩家，说明知识库无误。"
+            + "[玩家更正记忆] 如果联网核对后玩家仍然咬定知识库和网上的数据都错、坚持要以他说的为准，"
+            + "就调用 save_memory 工具把这条更正永久记下来（之后每次对话都会自动加载并优先采用）；"
+            + "只在玩家明确、反复坚持时才记，不要因一次随口质疑就记，也不要记与游戏无关的内容。"
+            + "已记住的玩家更正会以 [玩家更正记忆] 开头的 system 消息在每轮对话自动注入，回答时优先遵循。";
 
     public String id = UUID.randomUUID().toString();
     public String title = "新对话";
@@ -87,7 +97,7 @@ public class Conversation {
     public List<ChatMessage> messages = new ArrayList<>();
 
     public Conversation() {
-        messages.add(new ChatMessage("system", DEFAULT_SYSTEM));
+        messages.add(new ChatMessage("system", com.mangzai.shapeshiftercompass.config.PromptStore.get()));
     }
 
     /** 用首条用户消息生成标题。 */

@@ -36,8 +36,10 @@ public class ShapeShifterCompass implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         CompassConfig.load();
+        com.mangzai.shapeshiftercompass.config.PromptStore.load();
         KnowledgeBase.load();
         ConversationStore.load();
+        com.mangzai.shapeshiftercompass.memory.MemoryStore.load();
 
         ToolRegistry.register(new InventoryTool());
         ToolRegistry.register(new EquipmentTool());
@@ -54,6 +56,7 @@ public class ShapeShifterCompass implements ClientModInitializer {
         ToolRegistry.register(new com.mangzai.shapeshiftercompass.tools.SetPlayerDataTool());
         ToolRegistry.register(new com.mangzai.shapeshiftercompass.tools.ListModsTool());
         ToolRegistry.register(new com.mangzai.shapeshiftercompass.tools.FoodInfoTool());
+        ToolRegistry.register(new com.mangzai.shapeshiftercompass.tools.SaveMemoryTool());
 
         openKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.ssc_compass.open",

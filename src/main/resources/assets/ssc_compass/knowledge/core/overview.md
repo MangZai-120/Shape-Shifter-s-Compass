@@ -1,5 +1,7 @@
 # 幻形者诅咒 (SSC) 与附属包 (SSCA) 核心知识库
 
+> **数据库更新时间：2026-08-24**（SSC 原版 1.10.0 + SSCA 8.0.0-beta.2，进化映射依照代码 `SpUpgradeItem.UPGRADE_MAP` 与 `EvolutionStoneItem.finishUsing` 逐条核对；9 条原版线月髓环+进化石双分支已全部齐全）
+
 > 本文件为初始核心知识。要扩充内容，往 `assets/ssc_compass/knowledge/` 目录添加更多 .md 即可（构建自动打包）。本知识库**不包含剧情故事**。
 
 ## 什么是幻形者诅咒
@@ -13,8 +15,40 @@
 
 ## 进化途径：月髓环 与 进化石
 幻形者诅咒的形态进化主要有两种途径，两者条件不同，不可混淆：
-- **月髓环进化**：需要同时满足「天黑 + 世界中存在诅咒之月 + 玩家处于对应形态」，此时使用月髓环进化到对应的进化形态。
-- **进化石进化**：只需「玩家处于对应形态」即可使用进化石进化。
+- **月髓环进化**：需要同时满足「天黑 + 世界中存在诅咒之月 + 玩家处于对应基础形态」，此时使用月髓环进化到对应的进化形态。
+- **进化石进化**：只需「玩家处于对应基础形态」即可使用进化石进化。
+- 同一基础形态可同时拥有两条途径（不同道具并行不冲突），如豹猫 `ocelot_3` 走月髓环→风灵、走进化石→朔望。
+
+### 月髓环进化映射表（2026-08-24 依代码，11 条）
+| 基础形态 | → 进化为 |
+|---|---|
+| `shape-shifter-curse:familiar_fox_3` | `my_addon:familiar_fox_sp`（SP使魔） |
+| `shape-shifter-curse:axolotl_3` | `my_addon:axolotl_sp`（SP美西螈） |
+| `shape-shifter-curse:allay_sp` | `my_addon:fallen_allay_sp`（SP堕落悦灵） |
+| `shape-shifter-curse:anubis_wolf_3` | `my_addon:anubis_wolf_sp`（冥裁者） |
+| `shape-shifter-curse:bat_3` | `my_addon:bat_desmodus`（吸血蝙蝠） |
+| `shape-shifter-curse:ocelot_3` | `my_addon:ocelot_wind_spirit`（风灵） |
+| `shape-shifter-curse:spider_3` | `my_addon:spider_moon_weaver`（月织蛛） |
+| `shape-shifter-curse:feral_cat_sp` | `my_addon:wild_cat_nightmare`（食梦魔） |
+| `shape-shifter-curse:snow_fox_3` | `my_addon:snow_fox_frostspine`（寒棘狐） |
+| `my_addon:upgrade_familiar_fox`（进化使魔，需满级解锁分支） | `my_addon:familiar_fox_sp`（SP使魔） |
+| `my_addon:upgrade_axolotl`（进化美西螈，需满级解锁分支） | `my_addon:axolotl_sp`（SP美西螈） |
+
+### 进化石进化映射表（2026-08-24 依代码，11 条）
+| 基础形态 | → 进化为 |
+|---|---|
+| `shape-shifter-curse:familiar_fox_3` | `my_addon:familiar_fox_mancianima`（契灵） |
+| `shape-shifter-curse:axolotl_3` | `my_addon:axolotl_fluorescent`（荧光幼灵） |
+| `shape-shifter-curse:bat_3` | `my_addon:bat_parasitic_fruit`（寄生果蝠） |
+| `shape-shifter-curse:ocelot_3` | `my_addon:ocelot_nova`（朔望） |
+| `shape-shifter-curse:spider_3` | `my_addon:spider_salticidae`（跳蛛） |
+| `shape-shifter-curse:anubis_wolf_3` | `my_addon:golden_sandstorm_sp`（金沙岚(SP)） |
+| `shape-shifter-curse:snow_fox_3` | `my_addon:snow_fox_sp`（SP雪狐） |
+| `shape-shifter-curse:allay_sp` | `my_addon:allay_sp`（SP悦灵） |
+| `shape-shifter-curse:feral_cat_sp` | `my_addon:wild_cat_sp`（野猫(SP)，月光魅影阶段） |
+| `my_addon:upgrade_familiar_fox`（进化使魔，需满级） | `my_addon:familiar_fox_mancianima`（契灵） |
+| `my_addon:upgrade_axolotl`（进化美西螈，需满级） | `my_addon:axolotl_fluorescent`（荧光幼灵） |
+
 - 某个形态具体走哪条途径、需要哪些材料，可用 query_recipe 查询相关物品配方，或参考在线 wiki。
 
 ## 白名单系统

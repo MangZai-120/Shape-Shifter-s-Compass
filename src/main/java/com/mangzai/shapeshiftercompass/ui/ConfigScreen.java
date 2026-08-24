@@ -29,6 +29,11 @@ public class ConfigScreen extends Screen {
         Util.getOperatingSystem().open("https://platform.deepseek.com/top_up");
     }
 
+    /** 打开提示词文件夹（config/ssc_compass，内含可编辑的 system_prompt.txt） */
+    private void openPromptFolder() {
+        Util.getOperatingSystem().open(com.mangzai.shapeshiftercompass.config.PromptStore.dir().toFile());
+    }
+
     /** 基准宽度�?00% GUI scale 下的控件宽度）；实际宽度�?UI 缩放自适应，避免高 GUI scale 下底部按钮溢�?*/
     private static final int BASE_W = 192;
     private float uiScale = 1.0f;
@@ -132,6 +137,15 @@ public class ConfigScreen extends Screen {
         addDrawableChild(ButtonWidget.builder(Text.translatable("ssc_compass.config.edit_layout"),
                         b -> this.client.setScreen(new CompassEditorScreen(this)))
                 .dimensions(x, y, W, btnH).build());
+        y += stepSmall;
+
+        // 打开提示词文件夹（config/ssc_compass，含可编辑的 system_prompt.txt）
+        addDrawableChild(ButtonWidget.builder(Text.translatable("ssc_compass.config.open_prompt_folder"),
+                        b -> openPromptFolder())
+                .dimensions(x, y, W, btnH)
+                .tooltip(net.minecraft.client.gui.tooltip.Tooltip.of(
+                        Text.translatable("ssc_compass.config.open_prompt_folder.tip")))
+                .build());
         y += stepSmall;
 
         // 作弊开关：�?op 玩家可见可开

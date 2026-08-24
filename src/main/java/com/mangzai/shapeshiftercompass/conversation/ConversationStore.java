@@ -23,6 +23,16 @@ public final class ConversationStore {
 
     private ConversationStore() {}
 
+    /** 提示词与聊天记录所在文件夹（config/ssc_compass），确保存在后返回。 */
+    public static Path dir() {
+        Path d = PATH.getParent();
+        try {
+            Files.createDirectories(d);
+        } catch (Exception ignored) {
+        }
+        return d;
+    }
+
     public static List<Conversation> all() {
         return LIST;
     }
