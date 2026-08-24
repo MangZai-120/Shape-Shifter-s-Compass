@@ -40,6 +40,8 @@ public class AiClient {
     private static final int MAX_API_RETRIES = 2;
     /** 每次 HTTP 层重试的退避间隔（毫秒），避免连打。 */
     private static final long API_RETRY_DELAY_MS = 800L;
+    /** 无效回复（乱码/工具调用残片/空回复但带工具意图）的「换方式重答」最大次数，防止无限循环。 */
+    private static final int MAX_MEANING_RETRIES = 2;
     /** 当前进行中的请求（供取消生成）。 */
     private static volatile CompletableFuture<?> currentFuture;
     /** 取消标志：置 true 后正在递归的 doRound 不再发下一轮。 */
@@ -79,7 +81,7 @@ public class AiClient {
             o.addProperty("content", m.content);
             msgs.add(o);
         }
-        doRound(cfg, msgs, 0, 0, onOk, onErr);
+        doRound(cfg, msgs, 0, 0, 0, onOk, onErr);
     }
 
     private static String currentGameLanguage() {
@@ -110,8 +112,9 @@ public class AiClient {
     }
 
     /** Function Calling 一轮：请求→若 AI 要调工具则主线程本地执行并回传→递归下一轮，直到得到最终回复。
-     *  apiRetries：HTTP 层已重试次数（与 depth 独立，避免工具轮次和 HTTP 重试混算）。 */
-    private static void doRound(CompassConfig cfg, JsonArray msgs, int depth, int apiRetries,
+     *  apiRetries：HTTP 层已重试次数（与 depth 独立，避免工具轮次和 HTTP 重试混算）；
+     *  meaningRetries：对无效回复的「换方式重答」已用次数。 */
+    private static void doRound(CompassConfig cfg, JsonArray msgs, int depth, int apiRetries, int meaningRetries,
                                Consumer<String> onOk, Consumer<String> onErr) {
         JsonObject body = new JsonObject();
         body.addProperty("model", cfg.model);
@@ -147,7 +150,7 @@ public class AiClient {
                         if (apiRetries < MAX_API_RETRIES) {
                             ShapeShifterCompass.LOGGER.warn("[Compass] network error, retry {}/{}: {}",
                                     apiRetries + 1, MAX_API_RETRIES, err.getMessage());
-                            scheduleApiRetry(() -> doRound(cfg, msgs, depth, apiRetries + 1, onOk, onErr));
+                            scheduleApiRetry(() -> doRound(cfg, msgs, depth, apiRetries + 1, meaningRetries, onOk, onErr));
                             return;
                         }
                         CompassState.setBusy(false);
@@ -162,7 +165,7 @@ public class AiClient {
                             if (retryable && apiRetries < MAX_API_RETRIES) {
                                 ShapeShifterCompass.LOGGER.warn("[Compass] HTTP {} retryable, retry {}/{}",
                                         code, apiRetries + 1, MAX_API_RETRIES);
-                                scheduleApiRetry(() -> doRound(cfg, msgs, depth, apiRetries + 1, onOk, onErr));
+                                scheduleApiRetry(() -> doRound(cfg, msgs, depth, apiRetries + 1, meaningRetries, onOk, onErr));
                                 return;
                             }
                             // 重试预算耗尽（或非可重试码）但还有一次「换方式」机会：把错误作为提示塞回 msgs
@@ -178,7 +181,7 @@ public class AiClient {
                                         + "。如果你刚才尝试调用某个工具失败，请换一种方式再试（换更简单的工具、精简参数、"
                                         + "或改用两三步小操作代替一步大操作）；如果多次尝试仍失败，请如实告诉玩家上游 API 出错并简述原因。");
                                 msgs.add(hint);
-                                doRound(cfg, msgs, depth, apiRetries + 1, onOk, onErr);
+                                doRound(cfg, msgs, depth, apiRetries + 1, meaningRetries, onOk, onErr);
                                 return;
                             }
                             CompassState.setBusy(false);
@@ -190,8 +193,8 @@ public class AiClient {
                                 .getAsJsonObject().getAsJsonObject("message");
                         JsonArray toolCalls = (message.has("tool_calls") && !message.get("tool_calls").isJsonNull())
                                 ? message.getAsJsonArray("tool_calls") : null;
-                        JsonElement contentE = message.get("content");
-                        String content = (contentE == null || contentE.isJsonNull()) ? "" : contentE.getAsString();
+                        // 宽容提取 content：兼容三方变体（分段数组 / 对象包裹 / null），避免结构差异直接抛异常中断
+                        String content = extractContent(message.get("content"));
                         // 诊断日志：记录原始 content，便于排查模型返回的工具调用格式问题
                         if (!content.isEmpty()) {
                             ShapeShifterCompass.LOGGER.info("[Compass] AI raw content: {}", truncate(content, 500));
@@ -241,7 +244,7 @@ public class AiClient {
                                 toolMsg.addProperty("content", result);
                                 msgs.add(toolMsg);
                             }
-                            doRound(cfg, msgs, depth + 1, apiRetries, onOk, onErr);
+                            doRound(cfg, msgs, depth + 1, apiRetries, meaningRetries, onOk, onErr);
                         } else if (hasDsmlCalls) {
                             // DSML 工具调用：assistant 消息保留原 content（含 DSML 标签，供模型上下文），
                             // 执行各工具并把结果以 role=user 形式回传（DSML 模式不依赖 tool_call_id 配对）
@@ -256,31 +259,18 @@ public class AiClient {
                                 toolMsg.addProperty("content", "[tool result] " + call.name + " -> " + result);
                                 msgs.add(toolMsg);
                             }
-                            doRound(cfg, msgs, depth + 1, apiRetries, onOk, onErr);
+                            doRound(cfg, msgs, depth + 1, apiRetries, meaningRetries, onOk, onErr);
                         } else {
                             // 普通文字回复：清理残留的工具调用标签/碎片（DSML、裸 XML 等）
                             String cleaned = cleanToolCallLeftovers(content);
                             boolean meaningless = isMeaninglessReply(cleaned);
-                            // 畸形工具调用尝试（残缺标签/DSML碎片）+ 还有重试预算 → 回传纠错提示让模型重来一轮，而非直接中断
-                            if (meaningless && looksLikeToolCallAttempt(content) && depth < MAX_TOOL_ROUNDS) {
-                                JsonObject asstMsg = new JsonObject();
-                                asstMsg.addProperty("role", "assistant");
-                                asstMsg.addProperty("content", content);
-                                msgs.add(asstMsg);
-                                JsonObject fixMsg = new JsonObject();
-                                fixMsg.addProperty("role", "user");
-                                fixMsg.addProperty("content", "[系统提示] 你刚才的输出像是格式错误的工具调用（残缺的 <...> 标签）。"
-                                        + "如果需要调用工具，请使用系统提供的标准工具调用功能（function calling / tools），不要手写尖括号标签；"
-                                        + "如果不需要工具，请直接用自然语言回答玩家。请重新回答一次。");
-                                msgs.add(fixMsg);
-                                doRound(cfg, msgs, depth + 1, apiRetries, onOk, onErr);
-                                return;
-                            }
-                            // 空 content + finish_reason=tool_calls/function_call：模型想调工具但没走标准 tool_calls
-                            // 字段、也不是 DSML 格式（常见于 DeepSeek V4 Flash）→ 追加提示让它改用标准 function calling 重试
-                            boolean wantedTool = "tool_calls".equals(finishReason)
-                                    || "function_call".equals(finishReason);
-                            if (cleaned.isEmpty() && wantedTool && depth < MAX_TOOL_ROUNDS) {
+                            // 无效回复统一恢复通道：畸形工具调用残片、空 content 但模型想调工具、或纯乱码碎片，
+                            // 只要还有恢复预算就把原回复放回上下文并追加纠错提示，让模型换标准 function calling
+                            // 或直接用自然语言重新作答，而不是立刻把「模型未给出有效回复」抛给玩家。预算耗尽才兜底。
+                            if (meaningless && depth < MAX_TOOL_ROUNDS && meaningRetries < MAX_MEANING_RETRIES) {
+                                ShapeShifterCompass.LOGGER.warn(
+                                        "[Compass] meaningless reply (depth={}, finish={}), recovery retry {}/{}",
+                                        depth, finishReason, meaningRetries + 1, MAX_MEANING_RETRIES);
                                 JsonObject asstMsg = new JsonObject();
                                 asstMsg.addProperty("role", "assistant");
                                 // 空 content 直接塞会被部分上游拒绝，用单空格兜底
@@ -288,16 +278,17 @@ public class AiClient {
                                 msgs.add(asstMsg);
                                 JsonObject fixMsg = new JsonObject();
                                 fixMsg.addProperty("role", "user");
-                                fixMsg.addProperty("content", "[系统提示] 你刚才 finish_reason=" + finishReason
-                                        + " 但没有输出任何内容、也没有返回标准工具调用字段。请改用系统提供的标准工具调用功能"
-                                        + "（function calling / tools 字段）重新调用你需要的工具；"
-                                        + "如果不需要工具，请直接用自然语言回答玩家。请重新回答一次。");
+                                fixMsg.addProperty("content",
+                                        "[系统提示] 你刚才的回复无效（finish_reason=" + finishReason
+                                                + "，内容为空或只是格式错误的工具调用碎片）。如果需要查询游戏信息，"
+                                                + "请改用系统提供的标准工具调用功能（function calling / tools 字段）完成操作，"
+                                                + "不要在正文里手写任何尖括号标签或命名空间 ID；"
+                                                + "如果不需要调用工具，就直接用连贯的自然语言回答玩家的问题。请重新回答一次。");
                                 msgs.add(fixMsg);
-                                doRound(cfg, msgs, depth + 1, apiRetries, onOk, onErr);
+                                doRound(cfg, msgs, depth + 1, apiRetries, meaningRetries + 1, onOk, onErr);
                                 return;
                             }
-                            // 清理后若只剩无意义符号（尖括号/换行/空白），说明是一次失败的工具调用尝试，
-                            // 回传友好提示而非残片
+                            // 恢复预算耗尽仍无有效回复 → 回传友好提示而非残片
                             final String reply = meaningless
                                     ? Text.translatable("ssc_compass.msg.empty_reply").getString()
                                     : cleaned;
@@ -305,7 +296,13 @@ public class AiClient {
                             mc.execute(() -> onOk.accept(reply));
                         }
                     } catch (Exception e) {
+                        // 响应结构异常（网关返回非 JSON / 缺 choices 字段 / content 非字符串等）也走可重试通道：
+                        // 这类多为上游瞬时抖动或代理错误页，退避后原样重发通常即可恢复
                         ShapeShifterCompass.LOGGER.error("Parse AI response failed", e);
+                        if (apiRetries < MAX_API_RETRIES) {
+                            scheduleApiRetry(() -> doRound(cfg, msgs, depth, apiRetries + 1, meaningRetries, onOk, onErr));
+                            return;
+                        }
                         CompassState.setBusy(false);
                         mc.execute(() -> onErr.accept(e.getMessage()));
                     }
@@ -462,25 +459,6 @@ public class AiClient {
         return hasNamespaceId || hasAngleBracket;
     }
 
-    /** 判断原始 content 是否像一次（可能畸形的）工具调用尝试：DSML 碎片 / XML 风格工具标签 / 未闭合的 &lt;标签 / 孤立 &lt;/。 */
-    private static boolean looksLikeToolCallAttempt(String content) {
-        if (content == null || content.isBlank()) {
-            return false;
-        }
-        String SEP = "\uFF5C\uFF5CDSML\uFF5C\uFF5C";
-        if (content.contains(SEP)) {
-            return true;
-        }
-        if (java.util.regex.Pattern.compile("</?(invoke|parameter|function_calls|tool_calls|function|tools|plugin_call)\\b")
-                .matcher(content).find()) {
-            return true;
-        }
-        if (java.util.regex.Pattern.compile("(?m)^\\s*<[^>\\n]*$").matcher(content).find()) {
-            return true;
-        }
-        return java.util.regex.Pattern.compile("</\\s*(?:\\n|$)").matcher(content).find();
-    }
-
     /** 执行工具：async 工具在当前异步线程直接跑（如联网 HTTP，不卡渲染）；其余切主线程读取游戏状态。 */
     private static String runTool(MinecraftClient mc, String toolName, JsonObject toolArgs) {
         com.mangzai.shapeshiftercompass.tools.CompassTool tool = ToolRegistry.get(toolName);
@@ -501,5 +479,37 @@ public class AiClient {
             return "";
         }
         return s.length() <= n ? s : s.substring(0, n) + "...";
+    }
+
+    /**
+     * 宽容提取 message.content：兼容字符串之外的三方变体——
+     * ① 数组分段（部分中转/厂商把 content 拆成 [{"type":"text","text":"..."}]）；
+     * ② 对象包裹（{"text": "..."} 或 {"content": ...}）；③ null / 缺字段。
+     * 避免因结构差异直接抛异常中断对话。
+     */
+    private static String extractContent(JsonElement contentE) {
+        if (contentE == null || contentE.isJsonNull()) {
+            return "";
+        }
+        if (contentE.isJsonPrimitive()) {
+            return contentE.getAsString();
+        }
+        StringBuilder sb = new StringBuilder();
+        if (contentE.isJsonArray()) {
+            for (JsonElement part : contentE.getAsJsonArray()) {
+                sb.append(extractContent(part));
+            }
+            return sb.toString();
+        }
+        if (contentE.isJsonObject()) {
+            JsonObject o = contentE.getAsJsonObject();
+            if (o.has("text") && !o.get("text").isJsonNull() && o.get("text").isJsonPrimitive()) {
+                return o.get("text").getAsString();
+            }
+            if (o.has("content")) {
+                return extractContent(o.get("content"));
+            }
+        }
+        return sb.toString();
     }
 }
