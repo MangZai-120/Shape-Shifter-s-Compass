@@ -35,7 +35,7 @@
 
 - `/ssc_addon my_whitelist`：打开自助白名单 GUI（只作用于自己）。
 - `/ssc_addon palette export`：导出当前形态配色为分享码；`/ssc_addon palette apply <分享码>`：应用配色分享码（只作用于自己）。
-- `/ssc_addon nova primary|secondary`：朔望形态的主 / 次技能（一般由技能按键内部调用）。
+- 朔望形态的主 / 次技能已改为内部自定义 action 触发（`ssc_addon:nova_charge` / `ssc_addon:nova_leap`），不再提供 `nova primary|secondary` 指令。
 
 ## SSC 原版指令 /shape_shifter_curse
 

@@ -4,7 +4,7 @@
 
 ### In-Game AI Assistant · Built for Shape Shifter's Curse (SSC) & Addon (SSCA)
 
-Fabric 1.20.1 · Client-side Mod · OpenAI-Compatible API · `0.0.1-beta`
+Fabric 1.20.1 · Client-side Mod · OpenAI-Compatible API · `1.0.0`
 
 </div>
 

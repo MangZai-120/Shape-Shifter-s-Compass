@@ -4,7 +4,7 @@
 
 ### 游戏内 AI 助手 · 专为《幻形者诅咒 SSC / 附属 SSCA》打造
 
-Fabric 1.20.1 · 客户端模组 · OpenAI 兼容 API · `0.0.1-beta`
+Fabric 1.20.1 · 客户端模组 · OpenAI 兼容 API · `1.0.0`
 
 </div>
 
