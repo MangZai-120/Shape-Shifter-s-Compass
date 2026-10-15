@@ -21,6 +21,8 @@ bin/
 
 # Fabric / Minecraft 运行目录
 run/
+.source-cache/
+__pycache__/
 
 # 系统
 .DS_Store

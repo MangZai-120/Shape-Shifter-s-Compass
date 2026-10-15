@@ -81,6 +81,10 @@ public class AiClient {
             o.addProperty("content", m.content);
             msgs.add(o);
         }
+        JsonObject environment = new JsonObject();
+        environment.addProperty("role", "system");
+        environment.addProperty("content", com.mangzai.shapeshiftercompass.knowledge.KnowledgeBase.environmentPrompt());
+        msgs.add(environment);
         doRound(cfg, msgs, 0, 0, 0, onOk, onErr);
     }
 

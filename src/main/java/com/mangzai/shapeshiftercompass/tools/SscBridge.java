@@ -2,6 +2,8 @@ package com.mangzai.shapeshiftercompass.tools;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.text.Text;
+import com.mangzai.shapeshiftercompass.ShapeShifterCompass;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -14,6 +16,20 @@ import java.util.Map;
  */
 public final class SscBridge {
     private SscBridge() {}
+    private static final java.util.Set<String> WARNED = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    public record FormStatus(String id, String name) {}
+    public record ResourceValue(int value, int max, boolean cooldown) {}
+    public record ManaStatus(String type, double value, double max) {}
+
+    private static void warn(String operation, Throwable error) {
+        if (WARNED.add(operation)) ShapeShifterCompass.LOGGER.warn("SSC bridge failed to read {}", operation, error);
+    }
+
+    public static String version() {
+        return FabricLoader.getInstance().getModContainer("shape-shifter-curse")
+                .map(mod -> mod.getMetadata().getVersion().getFriendlyString()).orElse("未安装");
+    }
 
     public static boolean formAvailable() {
         return FabricLoader.getInstance().isModLoaded("shape-shifter-curse");
@@ -25,37 +41,74 @@ public final class SscBridge {
 
     /** 当前形态 ID（如 shape-shifter-curse:xxx），失败返回 null。 */
     public static String getCurrentFormId(PlayerEntity player) {
+        FormStatus status = getFormStatus(player);
+        return status == null ? null : status.id();
+    }
+
+    public static FormStatus getFormStatus(PlayerEntity player) {
         try {
-            Class<?> fu = Class.forName("net.onixary.shapeShifterCurseFabric.player_form.utils.FormUtils");
-            Object form = fu.getMethod("getPlayerForm", PlayerEntity.class).invoke(null, player);
-            if (form == null) {
-                return null;
+            Object form = SscReflection.currentForm(player, PlayerEntity.class, Class::forName);
+            String id = SscReflection.formId(form);
+            if (id == null) return null;
+            String name = id;
+            try {
+                Object text = form.getClass().getMethod("getFormName").invoke(form);
+                if (text instanceof Text translated) name = translated.getString();
+            } catch (ReflectiveOperationException ignored) {
+                // An ID is still useful if a third-party form has no display name.
             }
-            Object id = form.getClass().getMethod("getFormID").invoke(form);
-            return id == null ? null : id.toString();
-        } catch (Throwable t) {
+            return new FormStatus(id, name);
+        } catch (ReflectiveOperationException | LinkageError t) {
+            warn("form (SSC " + version() + ")", t);
             return null;
         }
     }
 
-    /** 玩家所有 Apoli VariableIntPower 资源（资源ID → [当前值, 最大值]）；失败返回空 map。 */
-    public static Map<String, int[]> getResources(PlayerEntity player) {
-        Map<String, int[]> out = new LinkedHashMap<>();
+    public static ManaStatus getNativeMana(PlayerEntity player) {
+        try {
+            Class<?> utils = Class.forName("net.onixary.shapeShifterCurseFabric.mana.ManaUtils");
+            Object component = utils.getMethod("getManaComponent", PlayerEntity.class).invoke(null, player);
+            if (component == null) return null;
+            Class<?> type = Class.forName("net.onixary.shapeShifterCurseFabric.mana.ManaComponent");
+            Object id = type.getMethod("getManaTypeID").invoke(component);
+            double value = ((Number) type.getMethod("getMana").invoke(component)).doubleValue();
+            double max = ((Number) type.getMethod("getMaxMana").invoke(component)).doubleValue();
+            return new ManaStatus(id == null ? "未启用" : id.toString(), value, max);
+        } catch (ReflectiveOperationException | LinkageError error) {
+            warn("SSC native mana", error);
+            return null;
+        }
+    }
+
+    /** Apoli variables and actual CooldownPower timers; null means failure, empty means no powers. */
+    public static Map<String, ResourceValue> getResources(PlayerEntity player) {
+        Map<String, ResourceValue> out = new LinkedHashMap<>();
         try {
             Class<?> phc = Class.forName("io.github.apace100.apoli.component.PowerHolderComponent");
             Object key = phc.getField("KEY").get(null);
-            Object comp = key.getClass().getMethod("get", Object.class).invoke(key, player);
+            Object comp = SscReflection.component(key, player, Class::forName);
             Class<?> vip = Class.forName("io.github.apace100.apoli.power.VariableIntPower");
-            Object listObj = comp.getClass().getMethod("getPowers", Class.class).invoke(comp, vip);
+            Class<?> power = Class.forName("io.github.apace100.apoli.power.Power");
+            Class<?> powerType = Class.forName("io.github.apace100.apoli.power.PowerType");
+            Object listObj = phc.getMethod("getPowers", Class.class).invoke(comp, vip);
             for (Object p : (List<?>) listObj) {
-                Object type = p.getClass().getMethod("getType").invoke(p);
-                Object id = type.getClass().getMethod("getIdentifier").invoke(type);
-                int value = (int) p.getClass().getMethod("getValue").invoke(p);
-                int max = (int) p.getClass().getMethod("getMax").invoke(p);
-                out.put(String.valueOf(id), new int[]{value, max});
+                Object type = power.getMethod("getType").invoke(p);
+                Object id = powerType.getMethod("getIdentifier").invoke(type);
+                int value = (int) vip.getMethod("getValue").invoke(p);
+                int max = (int) vip.getMethod("getMax").invoke(p);
+                out.put(String.valueOf(id), new ResourceValue(value, max, false));
             }
-        } catch (Throwable ignored) {
-            // Apoli 未就绪或 API 变动时静默降级
+            Class<?> cd = Class.forName("io.github.apace100.apoli.power.CooldownPower");
+            for (Object p : (List<?>) phc.getMethod("getPowers", Class.class).invoke(comp, cd)) {
+                Object type = power.getMethod("getType").invoke(p);
+                String id = String.valueOf(powerType.getMethod("getIdentifier").invoke(type));
+                int remaining = (int) cd.getMethod("getRemainingTicks").invoke(p);
+                int duration = (int) cd.getField("cooldownDuration").get(p);
+                out.put(id, new ResourceValue(remaining, duration, true));
+            }
+        } catch (ReflectiveOperationException | LinkageError error) {
+            warn("Apoli resources", error);
+            return null;
         }
         return out;
     }
@@ -77,9 +130,9 @@ public final class SscBridge {
         try {
             Class<?> phcClass = Class.forName("io.github.apace100.apoli.component.PowerHolderComponent");
             Object key = phcClass.getField("KEY").get(null);
-            Object comp = key.getClass().getMethod("get", Object.class).invoke(key, player);
+            Object comp = SscReflection.component(key, player, Class::forName);
             Class<?> mfp = Class.forName("io.github.apace100.apoli.power.ModifyFoodPower");
-            Object listObj = comp.getClass().getMethod("getPowers", Class.class).invoke(comp, mfp);
+            Object listObj = phcClass.getMethod("getPowers", Class.class).invoke(comp, mfp);
             java.util.List<?> powers = (java.util.List<?>) listObj;
             boolean anyApplied = false;
             for (Object power : powers) {

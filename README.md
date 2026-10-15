@@ -4,7 +4,7 @@
 
 ### 游戏内 AI 助手 · 专为《幻形者诅咒 SSC / 附属 SSCA》打造
 
-Fabric 1.20.1 · 客户端模组 · OpenAI 兼容 API · `1.0.0`
+Fabric 1.20.1 · 客户端模组 · OpenAI 兼容 API · `1.0.1`
 
 </div>
 
@@ -53,7 +53,7 @@ AI 会按需自动调用以下工具（function calling）。**只读类**默认
 | `get_crafting_grid` | 只读 | 当前合成栏（2×2 / 3×3）布局与产物，需先打开对应界面 |
 | `query_recipe` | 只读 | 按物品 ID / 中英文名查注册配方（前 5 条） |
 | `get_trinkets` | 只读 | Trinkets 饰品栏（需装 Trinkets） |
-| `get_form_status` | 只读 | 当前 SSC 形态 + 所有 Apoli 资源（CD/法力/能量，需装 SSC） |
+| `get_form_status` | 只读 | SSC 1.9.2 / 1.10.x 当前形态、SSC 原生法力、Apoli 资源与冷却；读数失败单独报告 |
 | `query_knowledge` | 只读 | 检索 SSC/SSCA 内置知识库（形态/进化/机制/指令） |
 | `get_player_status` | 只读 | 血量/饥饿/饱和/护甲/经验/坐标/维度/状态效果/属性 |
 | `web_search` | 只读·异步 | 联网搜索（web / Minecraft Wiki / Wikipedia） |
@@ -120,7 +120,13 @@ Compass 的系统提示词针对 SSC/SSCA 做了深度定制，关键规则：
 
 ## 知识库扩展
 
-知识库位于 `assets/ssc_compass/knowledge/core/`，是普通 Markdown 文件，按 `##` 二级标题切分条目。现有 `overview.md` / `forms.md` / `commands.md`。扩展只需往该目录加 `.md` 文件，重启即可被 `query_knowledge` 检索到。
+知识库位于 `assets/ssc_compass/knowledge/`：`core/` 是核对过的通用说明，`generated/` 是两版 SSC 发布 JAR、两个 SSCA 分支和详细 Wiki 的固定快照。当前共 2,251 条，涵盖形态、能力、物品、配方、26 种法术、进化、魔法书和符文研究。检索会按已安装版本过滤，并返回来源。法术的具体符文解法和剧情不收录。
+
+新增 Markdown 可用 `<!-- compass: mod=shape-shifter-curse version=1.9.2 -->` 限定版本；多个版本用逗号分隔，显式 `*` 表示前缀范围。没有版本对应资料时不会套用其它版本。按一至三级标题拆分条目，中文检索使用词组和相邻双字匹配。
+
+普通构建直接使用仓库内快照，不再依赖旁边的 `ssca_wiki`。`tools/refresh_knowledge.py --help` 给出重新生成所需的本地来源参数，`--check` 检查快照漂移；`manifest.json` 记录来源 commit 与 SHA-256。详细 Wiki 文档遵循其 CC-BY-NC-SA-4.0 许可，见 [THIRD_PARTY.md](THIRD_PARTY.md)。
+
+执行 `gradlew.bat --offline --no-daemon --gradle-user-home C:\Users\ASUS\.gradle check build` 可运行回归并打包。双版本的真实 JAR 接口检查脚本为 `tools/check_ssc_api.py`。这些检查不代替实际进服、变形与重连验收，详见 [本次核对记录](docs/compatibility-and-knowledge-2026-10-15.md)。
 
 ---
 

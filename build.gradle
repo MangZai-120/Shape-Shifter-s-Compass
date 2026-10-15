@@ -34,12 +34,9 @@ processResources {
     filesMatching("fabric.mod.json") {
         expand "version": project.version
     }
-    // 全量知识库：把 SSCA wiki（排除任意层级的剧情故事 lore，含 en/lore）自动打包进 mod 供 query_knowledge 检索
-    from("../ssca_wiki/docs") {
-        into "assets/ssc_compass/knowledge/wiki"
-        include "**/*.md"
-        exclude "**/lore/**"
-    }
+    // Unversioned 1.10.x / beta.2 mirrors must not override verified snapshots.
+    exclude 'assets/ssc_compass/knowledge/ssc-wiki.md'
+    exclude 'assets/ssc_compass/knowledge/mcmod-wiki.md'
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -51,4 +48,17 @@ java {
     withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.register('compassRegressionTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.mangzai.shapeshiftercompass.tools.CompassRegressionTest'
+    workingDir = projectDir
+}
+check.dependsOn compassRegressionTest
+
+jar {
+    from('THIRD_PARTY.md')
+    from('LICENSE') { rename { 'LICENSE_ssc_compass' } }
 }

@@ -14,7 +14,9 @@ public class KnowledgeTool implements CompassTool {
     @Override
     public String description() {
         return "检索《幻形者诅咒》SSC 与附属 SSCA 的预置知识库，涵盖形态、进化途径、机制、物品、指令等。"
-                + "遇到自定义合成（如月髓环等 Apoli 合成）或机制类问题优先用此工具。本知识库不包含剧情故事内容。";
+                + "自动按当前安装的 SSC 1.9.2 / 1.10.x 与 SSCA 版本筛选并返回来源。"
+                + "涵盖法术书、符文研究、进化、物品、配方与指令；数值为对应版本默认值，服务器数据包优先。"
+                + "不含剧情故事或具体法术的符文解法。";
     }
 
     @Override

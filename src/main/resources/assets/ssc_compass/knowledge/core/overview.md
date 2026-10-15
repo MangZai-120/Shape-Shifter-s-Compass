@@ -1,76 +1,12 @@
-# 幻形者诅咒 (SSC) 与附属包 (SSCA) 核心知识库
+# Compass 知识库与版本边界
 
-> **数据库更新时间：2026-08-24**（SSC 原版 1.10.0 + SSCA 8.0.0-beta.2，进化映射依照代码 `SpUpgradeItem.UPGRADE_MAP` 与 `EvolutionStoneItem.finishUsing` 逐条核对；9 条原版线月髓环+进化石双分支已全部齐全）
+## 当前环境、资料来源与实时数据
+数据库核对日期：2026-10-15。Compass 同时支持 SSC 1.9.2 与 1.10.x 的形态读取，不要求安装 SSCA。先用 list_mods 确认版本，用 get_form_status 读取本人当前形态；不能通过旧对话推测当前形态。
+SSC 1.9.2 和 1.10.0 的发布 JAR 分别生成形态、能力、物品与配方资料。SSCA 采用本地 SSC 1.9.2 兼容分支 1036d748 和主线 c11c69ec 的代码与数据。条目精确标注版本、来源路径；未知版本只返回适用的通用知识，不能冒充已核对。
+SSC 详细 Wiki 来自 https://github.com/LynxCatTheThird/SSC-wiki ，当前快照基线是 SSC 1.10.0。它的新版描述不会用于 SSC 1.9.2。MC百科是补充来源，数值冲突时优先当前版本代码与服务器实时数据。
+内置数值是默认值：服务器资源包/数据包、配置和其它模组可以覆盖。query_recipe 查询当前服务器配方；query_knowledge 查对应版本的机制与能力型配方。资料不包含剧情故事或具体法术的符文解法。
 
-> 本文件为初始核心知识。要扩充内容，往 `assets/ssc_compass/knowledge/` 目录添加更多 .md 即可（构建自动打包）。本知识库**不包含剧情故事**。
-
-## 什么是幻形者诅咒
-幻形者诅咒 (Shape Shifter's Curse, SSC) 是一个让玩家变身为各种动物形态的 Minecraft 模组，基于 Origins / Apoli 框架。附属包 (Shape Shifter Curse Addon, SSCA) 在其基础上扩展了更多 SP 形态、进化形态与主动/被动技能。
-
-## 形态体系概览
-- 形态按体型分为普通体型 (NORMAL) 与四足兽形 (FERAL)。
-- 常见形态族：使魔、雪狐、野猫、悦灵、美西螈、蝙蝠、蜘蛛、阿努比斯狼（胡狼）等。
-- 每个形态族通常有多个阶段；SP 形态与进化形态是附属包扩展的强化版本，各自带有独特技能。
-- 想知道自己当前是什么形态、技能冷却还剩多少，可用 get_form_status 查询。
-
-## 进化途径：月髓环 与 进化石
-幻形者诅咒的形态进化主要有两种途径，两者条件不同，不可混淆：
-- **月髓环进化**：需要同时满足「天黑 + 世界中存在诅咒之月 + 玩家处于对应基础形态」，此时使用月髓环进化到对应的进化形态。
-- **进化石进化**：只需「玩家处于对应基础形态」即可使用进化石进化。
-- 同一基础形态可同时拥有两条途径（不同道具并行不冲突），如豹猫 `ocelot_3` 走月髓环→风灵、走进化石→朔望。
-
-### 月髓环进化映射表（2026-08-24 依代码，11 条）
-| 基础形态 | → 进化为 |
-|---|---|
-| `shape-shifter-curse:familiar_fox_3` | `my_addon:familiar_fox_sp`（SP使魔） |
-| `shape-shifter-curse:axolotl_3` | `my_addon:axolotl_sp`（SP美西螈） |
-| `shape-shifter-curse:allay_sp` | `my_addon:fallen_allay_sp`（SP堕落悦灵） |
-| `shape-shifter-curse:anubis_wolf_3` | `my_addon:anubis_wolf_sp`（冥裁者） |
-| `shape-shifter-curse:bat_3` | `my_addon:bat_desmodus`（吸血蝙蝠） |
-| `shape-shifter-curse:ocelot_3` | `my_addon:ocelot_wind_spirit`（风灵） |
-| `shape-shifter-curse:spider_3` | `my_addon:spider_moon_weaver`（月织蛛） |
-| `shape-shifter-curse:feral_cat_sp` | `my_addon:wild_cat_nightmare`（食梦魔） |
-| `shape-shifter-curse:snow_fox_3` | `my_addon:snow_fox_frostspine`（寒棘狐） |
-| `my_addon:upgrade_familiar_fox`（进化使魔，需满级解锁分支） | `my_addon:familiar_fox_sp`（SP使魔） |
-| `my_addon:upgrade_axolotl`（进化美西螈，需满级解锁分支） | `my_addon:axolotl_sp`（SP美西螈） |
-
-### 进化石进化映射表（2026-08-24 依代码，11 条）
-| 基础形态 | → 进化为 |
-|---|---|
-| `shape-shifter-curse:familiar_fox_3` | `my_addon:familiar_fox_mancianima`（契灵） |
-| `shape-shifter-curse:axolotl_3` | `my_addon:axolotl_fluorescent`（荧光幼灵） |
-| `shape-shifter-curse:bat_3` | `my_addon:bat_parasitic_fruit`（寄生果蝠） |
-| `shape-shifter-curse:ocelot_3` | `my_addon:ocelot_nova`（朔望） |
-| `shape-shifter-curse:spider_3` | `my_addon:spider_salticidae`（跳蛛） |
-| `shape-shifter-curse:anubis_wolf_3` | `my_addon:golden_sandstorm_sp`（金沙岚(SP)） |
-| `shape-shifter-curse:snow_fox_3` | `my_addon:snow_fox_sp`（SP雪狐） |
-| `shape-shifter-curse:allay_sp` | `my_addon:allay_sp`（SP悦灵） |
-| `shape-shifter-curse:feral_cat_sp` | `my_addon:wild_cat_sp`（野猫(SP)，月光魅影阶段） |
-| `my_addon:upgrade_familiar_fox`（进化使魔，需满级） | `my_addon:familiar_fox_mancianima`（契灵） |
-| `my_addon:upgrade_axolotl`（进化美西螈，需满级） | `my_addon:axolotl_fluorescent`（荧光幼灵） |
-
-- 某个形态具体走哪条途径、需要哪些材料，可用 query_recipe 查询相关物品配方，或参考在线 wiki。
-
-## 白名单系统
-附属包提供白名单系统，用于保护指定玩家及其宠物/召唤物不受某些范围技能的影响与伤害：
-- **白名单为空时**：所有玩家以及玩家的宠物/召唤物都不受技能影响与伤害，其它生物会受影响。
-- **白名单不为空时**：只有白名单内的个体不受影响与伤害，其它生物（含其他玩家）都会受影响。
-- 游戏内指令：`/ssc_addon whitelist add/remove/list/clear`。
-
-## 美西螈系「湿润度」
-美西螈系形态有「湿润度」机制，其载体是玩家的氧气值 (air)：
-- 在陆地会持续消耗湿润度（掉氧气），氧气耗尽后会受到脱水伤害。
-- 泡水或使用保湿类物品可恢复。湿润度影响峰值血量表现。
-
-## 常见问题（Compass 能帮你做什么）
-- 「我现在是什么形态、技能好了没」→ get_form_status
-- 「某物品怎么合成 / 配方是什么」→ query_recipe（注册配方）或 query_knowledge（自定义机制）
-- 「我背包 / 装备 / 饰品里有什么」→ get_inventory / get_equipment / get_trinkets
-- 「我这个合成台摆的能做出什么」→ get_crafting_grid
-
-## 更多资料
-完整的形态列表、技能详解、物品配方与指令说明请参考在线 wiki：
-- SSCA: https://shape-shifter-curse-addon.readthedocs.io/zh-cn/latest/
-- SSC: https://ssc-wiki.readthedocs.io/zh-cn/latest/
-
-（注意：本助手不提供剧情故事的具体内容，请勿据此询问剧透。）
+## 当前形态、技能冷却、法力与能量怎么查
+get_form_status 显示实际 SSC 版本、当前形态 ID 与本地化名称、SSC 原生法力，以及 Apoli 变量资源和 CooldownPower 冷却。
+形态读取失败不能解释为人类；资源读取失败不能解释为资源为零或技能就绪。进服同步未完成时可以稍后重试。
+法力、雾血、种子量、抗伤栏等通常是资源点或独立计数；只有明确的计时器才按 20 tick=1秒换算。并非所有技能冷却都属于 Apoli。月尘魔法书法力和卷轴冷却保存在物品 NBT/服务端共享表，不在形态 Apoli 表内，不能据此声称书法力已满或法术已冷却。
