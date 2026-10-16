@@ -47,7 +47,7 @@ public class InputHistory {
                 input.setText(draft);
             }
         }
-        input.setCursorToEnd();
+        input.setCursorToEnd(false);
         return true;
     }
 

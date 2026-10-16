@@ -29,7 +29,7 @@ public final class EvolutionAdviceTool implements CompassTool {
             Object registry=AddonAccess.type("evolution.EvolutionRegistry").getField("INSTANCE").get(null);
             Map<?,?> routes=(Map<?,?>)AddonAccess.get(registry,"all");
             if(routes.isEmpty()) out.append("服务器路线镜像尚未读取到；不能把空表当作没有进化路线。\n");
-            Object route=routeId.isEmpty()?registry.getClass().getMethod("getRouteByStartForm",Identifier.class).invoke(registry,new Identifier(form))
+            Object route=routeId.isEmpty()?registry.getClass().getMethod("getRouteByStartForm",Identifier.class).invoke(registry,Identifier.of(form))
                     :registry.getClass().getMethod("getRoute",String.class).invoke(registry,routeId);
             if(route!=null) {
                 out.append("路线：").append(Text.translatable(String.valueOf(AddonAccess.field(route,"displayNameKey"))).getString()).append('\n');

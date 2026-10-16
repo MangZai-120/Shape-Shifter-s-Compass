@@ -22,7 +22,7 @@ public class ConfigScreen extends Screen {
     /** DeepSeek 鲸鱼按钮的物理坐标 {x, y, w, h}，供 render 画图标 */
     private int[] whaleBtnBox = null;
     private static final net.minecraft.util.Identifier WHALE_ICON =
-            new net.minecraft.util.Identifier("ssc_compass", "textures/gui/deepseek_whale.png");
+            net.minecraft.util.Identifier.of("ssc_compass", "textures/gui/deepseek_whale.png");
 
     /** 打开 DeepSeek 开放平台充值页 */
     private void openDeepSeekTopUp() {
@@ -169,7 +169,7 @@ public class ConfigScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        this.renderBackground(ctx);
+        this.renderBackground(ctx, mouseX, mouseY, delta);
         int titleY = Math.max(8, Math.round(20 * uiScale));
         ctx.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, titleY, 0xFFFFFFFF);
         int x = left();

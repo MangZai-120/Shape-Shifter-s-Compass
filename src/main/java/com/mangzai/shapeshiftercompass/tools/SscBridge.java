@@ -27,12 +27,17 @@ public final class SscBridge {
     }
 
     public static String version() {
-        return FabricLoader.getInstance().getModContainer("shape-shifter-curse")
-                .map(mod -> mod.getMetadata().getVersion().getFriendlyString()).orElse("未安装");
+        return sscMod().map(mod -> mod.getMetadata().getVersion().getFriendlyString()).orElse("未安装");
+    }
+
+    public static java.util.Optional<net.fabricmc.loader.api.ModContainer> sscMod() {
+        var loader = FabricLoader.getInstance();
+        var official = loader.getModContainer("shape-shifter-curse");
+        return official.isPresent() ? official : loader.getModContainer("shape-shifter-curse-unofficial");
     }
 
     public static boolean formAvailable() {
-        return FabricLoader.getInstance().isModLoaded("shape-shifter-curse");
+        return sscMod().isPresent();
     }
 
     public static boolean apoliAvailable() {
@@ -162,8 +167,12 @@ public final class SscBridge {
             if (anyApplied) {
                 note = "（已按当前形态的 modify_food 加成修正）";
             }
-        } catch (Throwable ignored) {
-            // Apoli 未就绪或 API 变动：返回原值
+        } catch (ReflectiveOperationException | LinkageError unavailable) {
+            hunger = baseHunger;
+            satMod = baseSatMod;
+            alwaysEdible = false;
+            note = "（当前Apoli饮食修正接口不可读取，仅显示物品组件基础值）";
+            warn("Apoli food modifiers", unavailable);
         }
         return new Object[]{hunger, satMod, alwaysEdible, note};
     }

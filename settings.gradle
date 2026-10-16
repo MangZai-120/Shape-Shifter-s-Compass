@@ -4,4 +4,4 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-rootProject.name = "shape-shifter-s-compass"
+rootProject.name = "shape-shifter-s-compass-1.21.1-fabric"

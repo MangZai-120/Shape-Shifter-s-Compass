@@ -2,13 +2,14 @@ package com.mangzai.shapeshiftercompass.tools;
 
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.FoodComponent;
+import net.minecraft.component.type.FoodComponent;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 
-import com.mojang.datafixers.util.Pair;
 
 import java.util.List;
 
@@ -18,6 +19,7 @@ import java.util.List;
  *
  * 核心公式（AppleSkin FoodValues.getSaturationIncrement）：
  *   饱和度回复量 = hunger × saturationModifier × 2
+ * 1.21.1 FoodComponent.saturation() 已是回复量，不能再次乘上述系数。
  * 实际吃到肚子里的饱和度受「饱和度 ≤ 饥饿值」上限约束（HungerManager.add 逻辑）。
  *
  * 这样 AI 在回答「使魔吃金胡萝卜有用吗 / 哪种食物更划算」时就有精确依据，
@@ -32,7 +34,7 @@ public final class FoodInfo {
         if (stack == null || stack.isEmpty()) {
             return "";
         }
-        return describeItem(stack.getItem(), player);
+        return describeStack(stack, player);
     }
 
     /**
@@ -41,24 +43,25 @@ public final class FoodInfo {
      * 若该物品不是食物，返回空串。
      */
     public static String describeItem(Item item, PlayerEntity player) {
-        if (item == null || !item.isFood()) {
-            return "";
-        }
-        FoodComponent food = item.getFoodComponent();
+        return item == null ? "" : describeStack(new ItemStack(item), player);
+    }
+
+    private static String describeStack(ItemStack stack, PlayerEntity player) {
+        FoodComponent food = stack.get(DataComponentTypes.FOOD);
         if (food == null) {
             return "";
         }
-        int baseHunger = food.getHunger();
-        float baseSatMod = food.getSaturationModifier();
+        int baseHunger = food.nutrition();
+        float baseSatMod = baseHunger > 0 ? food.saturation() / (baseHunger * 2f) : 0f;
 
         // 套用当前形态的 apoli:modify_food 修正（素食/肉食/SP形态饮食加成等），得到真实回复量
         double hunger = baseHunger;
         double satMod = baseSatMod;
-        boolean formAlwaysEdible = food.isAlwaysEdible();
+        boolean formAlwaysEdible = food.canAlwaysEat();
         String formNote = "";
         if (player != null && com.mangzai.shapeshiftercompass.tools.SscBridge.apoliAvailable()) {
             try {
-                net.minecraft.item.ItemStack probe = new net.minecraft.item.ItemStack(item);
+                net.minecraft.item.ItemStack probe = stack.copy();
                 Object[] res = com.mangzai.shapeshiftercompass.tools.SscBridge
                         .applyFormFoodModifiers(player, probe, baseHunger, baseSatMod);
                 hunger = (double) res[0];
@@ -72,7 +75,8 @@ public final class FoodInfo {
         if (hunger < 0) hunger = 0;
         if (satMod < 0) satMod = 0;
         // AppleSkin 公式：饱和度回复量 = hunger * saturationModifier * 2
-        double satGain = hunger * satMod * 2f;
+        double satGain = hunger == baseHunger && satMod == baseSatMod
+                ? food.saturation() : hunger * satMod * 2f;
 
         StringBuilder sb = new StringBuilder();
         sb.append("[食物] 饥饿值 +").append((int) Math.round(hunger))
@@ -83,10 +87,10 @@ public final class FoodInfo {
         } else if (formNote != null && !formNote.isEmpty()) {
             sb.append(formNote);
         }
-        if (food.isMeat()) {
+        if (stack.isIn(ItemTags.MEAT)) {
             sb.append("，肉类");
         }
-        if (food.isSnack()) {
+        if (food.eatSeconds() < 1.0f) {
             sb.append("，零食");
         }
         if (formAlwaysEdible) {
@@ -96,24 +100,24 @@ public final class FoodInfo {
         if (player != null) {
             boolean canEatNow = formAlwaysEdible || player.getHungerManager().isNotFull();
             if (!canEatNow) {
-                sb.append("，⚠现在不饿吃了浪费");
+                sb.append("，⚠当前饱腹，不能食用");
             }
         }
         // 附带状态效果（腐肉/蜘蛛眼的饥饿、金苹果的生命恢复等）
-        List<Pair<StatusEffectInstance, Float>> effects = food.getStatusEffects();
+        List<FoodComponent.StatusEffectEntry> effects = food.effects();
         if (effects != null && !effects.isEmpty()) {
             sb.append("，效果: ");
             for (int i = 0; i < effects.size(); i++) {
-                Pair<StatusEffectInstance, Float> pair = effects.get(i);
-                StatusEffectInstance eff = pair.getFirst();
+                FoodComponent.StatusEffectEntry pair = effects.get(i);
+                StatusEffectInstance eff = pair.effect();
                 if (eff != null) {
-                    Identifier id = Registries.STATUS_EFFECT.getId(eff.getEffectType());
+                    Identifier id = Registries.STATUS_EFFECT.getId(eff.getEffectType().value());
                     String idStr = id == null ? "unknown" : id.toString();
                     int dur = eff.getDuration();
                     String durStr = (dur < 0 || dur > 1_000_000) ? "无限" : (dur / 20 + "秒");
                     sb.append(idStr).append("(等级").append(eff.getAmplifier() + 1)
                             .append(",").append(durStr)
-                            .append(",概率").append((int)(pair.getSecond() * 100)).append("%)");
+                            .append(",概率").append((int)(pair.probability() * 100)).append("%)");
                     if (i < effects.size() - 1) {
                         sb.append(";");
                     }

@@ -33,14 +33,8 @@ public class ShapeShifterCompass implements ClientModInitializer {
     private static KeyBinding openKey;
     private static boolean openKeyDown = false;
 
-    @Override
-    public void onInitializeClient() {
-        CompassConfig.load();
-        com.mangzai.shapeshiftercompass.config.PromptStore.load();
-        KnowledgeBase.load();
-        ConversationStore.load();
-        com.mangzai.shapeshiftercompass.memory.MemoryStore.load();
-
+    /** Tool setup is independent of the game window and shared by the entrypoint and integration checks. */
+    public static void registerTools() {
         ToolRegistry.register(new InventoryTool());
         ToolRegistry.register(new EquipmentTool());
         ToolRegistry.register(new CraftingGridTool());
@@ -62,6 +56,19 @@ public class ShapeShifterCompass implements ClientModInitializer {
         ToolRegistry.register(new com.mangzai.shapeshiftercompass.tools.TargetInfoTool());
         ToolRegistry.register(new com.mangzai.shapeshiftercompass.tools.RecipePlanTool());
         ToolRegistry.register(new com.mangzai.shapeshiftercompass.tools.EvolutionAdviceTool());
+
+
+    }
+
+    @Override
+    public void onInitializeClient() {
+        CompassConfig.load();
+        com.mangzai.shapeshiftercompass.config.PromptStore.load();
+        KnowledgeBase.load();
+        ConversationStore.load();
+        com.mangzai.shapeshiftercompass.memory.MemoryStore.load();
+
+        registerTools();
 
         openKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.ssc_compass.open",

@@ -169,8 +169,9 @@ public final class AiResponseRegressionTest {
                     .then(com.mojang.brigadier.builder.LiteralArgumentBuilder.<net.minecraft.command.CommandSource>literal("addon").then(amount)))));
             var buffer = new net.minecraft.network.PacketByteBuf(io.netty.buffer.Unpooled.buffer());
             try {
-                new net.minecraft.network.packet.s2c.play.CommandTreeS2CPacket(server.getRoot()).write(buffer);
-                var received = new net.minecraft.network.packet.s2c.play.CommandTreeS2CPacket(buffer);
+                net.minecraft.network.packet.s2c.play.CommandTreeS2CPacket.CODEC.encode(buffer,
+                        new net.minecraft.network.packet.s2c.play.CommandTreeS2CPacket(server.getRoot()));
+                var received = net.minecraft.network.packet.s2c.play.CommandTreeS2CPacket.CODEC.decode(buffer);
                 var client = new com.mojang.brigadier.CommandDispatcher<>(received.getCommandTree(null));
                 var equipped = client.parse("ssc_addon moon_dust_spellbook exp addon 1000 equipped", null);
                 check((!equipped.getReader().canRead() && equipped.getContext().getCommand() != null) == updated,

@@ -23,7 +23,7 @@ public final class EvidenceScreen extends Screen {
         addDrawableChild(ButtonWidget.builder(Text.translatable("gui.back"),b->close()).dimensions(width/2-40,height-25,80,20).build());
     }
     @Override public void close() { client.setScreen(parent); }
-    @Override public boolean mouseScrolled(double x,double y,double amount) { scroll=Math.max(0,Math.min(maxScroll,scroll-(int)(amount*24))); return true; }
+    @Override public boolean mouseScrolled(double x,double y,double horizontalAmount,double amount) { scroll=Math.max(0,Math.min(maxScroll,scroll-(int)(amount*24))); return true; }
     @Override public boolean mouseClicked(double x,double y,int button) {
         if(button==0 && y>=30 && y<height-32) for(int[] box:hitboxes) if(x>=12 && x<=width-12 && y>=box[1] && y<box[2]) {
             if(!expanded.add(box[0])) expanded.remove(box[0]); return true;
@@ -31,7 +31,7 @@ public final class EvidenceScreen extends Screen {
         return super.mouseClicked(x,y,button);
     }
     @Override public void render(DrawContext ctx,int mx,int my,float delta) {
-        renderBackground(ctx); ctx.drawCenteredTextWithShadow(textRenderer,title,width/2,12,0xFFFFFFFF);
+        renderBackground(ctx, mx, my, delta); ctx.drawCenteredTextWithShadow(textRenderer,title,width/2,12,0xFFFFFFFF);
         hitboxes.clear(); int y=34-scroll;
         ctx.enableScissor(10,30,width-10,height-32);
         for(int i=0;i<evidence.size();i++) {

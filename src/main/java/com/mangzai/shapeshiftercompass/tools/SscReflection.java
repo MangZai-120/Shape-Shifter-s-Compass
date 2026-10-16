@@ -26,8 +26,12 @@ final class SscReflection {
 
     static Object component(Object key, Object entity, Classes classes) throws ReflectiveOperationException {
         // Component keys have generated implementation classes; invoke the public API instead.
-        return classes.find("dev.onyxstudios.cca.api.v3.component.ComponentKey")
-                .getMethod("get", Object.class).invoke(key, entity);
+        Class<?> componentKey;
+        try { componentKey = classes.find("org.ladysnake.cca.api.v3.component.ComponentKey"); }
+        catch (ClassNotFoundException oldCca) {
+            componentKey = classes.find("dev.onyxstudios.cca.api.v3.component.ComponentKey");
+        }
+        return componentKey.getMethod("get", Object.class).invoke(key, entity);
     }
 
     static String formId(Object form) throws ReflectiveOperationException {

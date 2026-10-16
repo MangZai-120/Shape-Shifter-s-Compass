@@ -67,7 +67,7 @@ public class PlayerStatusTool implements CompassTool {
         } else {
             sb.append("状态效果:\n");
             for (StatusEffectInstance e : effects) {
-                Identifier idObj = Registries.STATUS_EFFECT.getId(e.getEffectType());
+                Identifier idObj = Registries.STATUS_EFFECT.getId(e.getEffectType().value());
                 String id = idObj == null ? "unknown" : idObj.toString();
                 int dur = e.getDuration();
                 String durStr = (dur < 0 || dur > 1_000_000) ? "很长/无限" : (dur / 20 + " 秒");
@@ -87,7 +87,7 @@ public class PlayerStatusTool implements CompassTool {
         return sb.toString();
     }
 
-    private static void appendAttr(StringBuilder sb, ClientPlayerEntity p, String label, EntityAttribute attr) {
+    private static void appendAttr(StringBuilder sb, ClientPlayerEntity p, String label, net.minecraft.registry.entry.RegistryEntry<EntityAttribute> attr) {
         if (p.getAttributes().hasAttribute(attr)) {
             sb.append("  ").append(label).append(": ")
                     .append(String.format("%.3f", p.getAttributeValue(attr))).append('\n');

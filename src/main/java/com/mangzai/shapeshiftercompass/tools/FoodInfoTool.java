@@ -79,7 +79,7 @@ public class FoodInfoTool implements CompassTool {
             try {
                 String name = item.getName().getString();
                 if (q.equals(name) || name.contains(q)) {
-                    if (item.isFood() && item.getFoodComponent() != null) {
+                    if (item.getComponents().contains(net.minecraft.component.DataComponentTypes.FOOD)) {
                         matched = item;
                         break;
                     }

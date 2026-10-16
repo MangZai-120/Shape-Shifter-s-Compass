@@ -34,12 +34,17 @@ public final class KnowledgeBase {
             FabricLoader.getInstance().getModContainer(id).ifPresent(mod ->
                     versions.put(id, mod.getMetadata().getVersion().getFriendlyString()));
         }
+        com.mangzai.shapeshiftercompass.tools.SscBridge.sscMod().ifPresent(mod -> {
+            String version = mod.getMetadata().getVersion().getFriendlyString();
+            versions.put("shape-shifter-curse", version);
+            versions.put(mod.getMetadata().getId(), version);
+        });
         return versions;
     }
 
     /** Per-turn context also corrects old user-customized/saved system prompts. */
     public static String environmentPrompt() {
-        return "[SSC/SSCA 当前环境] " + installedVersions()
+        return migrationNotice() + "\n[SSC/SSCA 当前环境] " + installedVersions()
                 + "。形态以 get_form_status 的实时结果为准，读取失败不代表人类或冷却完成。"
                 + "query_knowledge 已按安装版本过滤，每条带来源和版本；其它版本网页不能覆盖当前版本证据。"
                 + "法力/能量是资源点，只有计时器才以 tick 换算秒。形态 Apoli 资源与月尘魔法书 NBT 法力是不同系统。"
@@ -53,9 +58,15 @@ public final class KnowledgeBase {
                 + "制作缺口与路线用 plan_crafting，进化下一步用 get_evolution_advice；这些工具只读，不会自动制作或解锁。";
     }
 
+    public static String migrationNotice() {
+        return "[Minecraft 1.21.1 知识库迁移说明] 内置 SSC/SSCA 资料来自 Minecraft 1.20.1 的固定快照，"
+                + "在 1.21.1 中仅作参考，尚未核实新版模组的机制与数值。以当前已安装模组的实时接口、服务器指令和配方为准；"
+                + "模组版本号相同也不能据此宣称这些历史资料已在 1.21.1 验证。";
+    }
+
     public static int size() { return index.size(); }
     public static String search(String query, int maxResults) {
         Map<String, String> versions = installedVersions();
-        return "当前环境: " + versions + "\n" + index.search(query, maxResults, versions);
+        return migrationNotice() + "\n当前环境: " + versions + "\n" + index.search(query, maxResults, versions);
     }
 }

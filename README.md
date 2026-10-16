@@ -1,10 +1,12 @@
+> **1.21.1 Fabric 移植版**：使用 Java 21。支持读取 `shape-shifter-curse-unofficial` 的实时状态，并适配本机 1.21.1 SSCA 的书数据接口。内置 SSC/SSCA 知识仍是 1.20.1 历史快照，运行时会提示版本边界。详见[移植说明](docs/porting-1.21.1.md)。
+
 <div align="center">
 
 # ✦ Shape Shifter's Compass
 
 ### 游戏内 AI 助手 · 专为《幻形者诅咒 SSC / 附属 SSCA》打造
 
-Fabric 1.20.1 · 客户端模组 · OpenAI 兼容 API · `1.1.4`
+Fabric 1.21.1 · 客户端模组 · OpenAI 兼容 API · `1.1.4+mc1.21.1`
 
 </div>
 
@@ -40,11 +42,11 @@ Fabric 1.20.1 · 客户端模组 · OpenAI 兼容 API · `1.1.4`
 
 1.1.4 已移除旧消息编辑重生成、本地搜索与本地工具页面、工具按钮及 Shift+K 专用入口；按 K 或 Shift+K 均打开聊天小窗。聊天内的知识查询、状态读取和经验操作由助手按需调用。
 
-1.1.1 修复文本工具调用解析和空回复后的结果丢失，新增佩戴魔法书加经验入口。需要同步更新对应 SSC 分支的 SSCA；旧服务端会明确提示不支持。见 [修复与指令说明](docs/changes-1.1.md)。
+1.1.1 修复文本工具调用解析和空回复后的结果丢失，新增佩戴魔法书加经验入口。需要同步更新对应 SSC 分支的 SSCA；旧服务端会明确提示不支持。见 [修复与指令说明](docs/porting-1.21.1.md)。
 
-1.1.2 修正 DeepSeek 思考开关与额度截断处理，新配置输出上限默认8192。见 [思考模式与额度修复](docs/changes-1.1.md)。
+1.1.2 修正 DeepSeek 思考开关与额度截断处理，新配置输出上限默认8192。见 [思考模式与额度修复](docs/porting-1.21.1.md)。
 
-1.1.3 将“给我身上的书加1000点经验”等明确请求直接交给本地操作，实时选择佩戴或手持的书，按服务器真实结果回复，不调用AI。给经验仍需开启作弊并拥有OP2。补齐主手信息，并修复只读查询后思考截断无法继续操作的问题。见 [目标选择与输出额度修复](docs/changes-1.1.md)。
+1.1.3 将“给我身上的书加1000点经验”等明确请求直接交给本地操作，实时选择佩戴或手持的书，按服务器真实结果回复，不调用AI。给经验仍需开启作弊并拥有OP2。补齐主手信息，并修复只读查询后思考截断无法继续操作的问题。见 [目标选择与输出额度修复](docs/porting-1.21.1.md)。
 
 默认快捷键 **K**（`key.ssc_compass.open`，可在控制设置里改）。容器界面（背包/工作台）打开时若 K 被拦截，会用物理键边缘检测兜底，以原界面为背景叠加唤出。
 
@@ -61,9 +63,9 @@ AI 会按需自动调用以下工具（function calling）。**只读类**默认
 | `get_crafting_grid` | 只读 | 当前合成栏（2×2 / 3×3）布局与产物，需先打开对应界面 |
 | `query_recipe` | 只读 | 按物品 ID / 中英文名查注册配方（前 5 条） |
 | `get_trinkets` | 只读 | Trinkets 饰品栏（需装 Trinkets） |
-| `get_form_status` | 只读 | SSC 1.9.2 / 1.10.x 当前形态、SSC 原生法力、Apoli 资源与冷却；读数失败单独报告 |
+| `get_form_status` | 只读 | SSC（含 1.21.1 非官方移植）当前形态、SSC 原生法力、Apoli 资源与冷却；读数失败单独报告 |
 | `query_knowledge` | 只读 | 检索 SSC/SSCA 内置知识库（形态/进化/机制/指令） |
-| `get_spellbook_status` | 只读 | 佩戴的魔法书、卷轴等级、法力、有效冷却与已知施法障碍 |
+| `get_spellbook_status` | 只读 | 佩戴的魔法书、卷轴等级、法力和本版可读冷却；施放等级与实际耗蓝接口缺失时明确说明 |
 | `get_target_info` | 只读 | 打开罗盘时选取的悬停物品、准星方块/实体；带快照时间 |
 | `plan_crafting` | 只读 | 当前背包与副手的材料缺口、最多4层/40步制作路线，包含可读取的SSCA加工示例 |
 | `get_evolution_advice` | 只读 | 同步进化路线、点数、前置节点、分支与道具条件 |
@@ -140,13 +142,13 @@ Compass 的系统提示词针对 SSC/SSCA 做了深度定制，关键规则：
 
 普通构建直接使用仓库内快照，不再依赖旁边的 `ssca_wiki`。`tools/refresh_knowledge.py --help` 给出重新生成所需的本地来源参数，`--check` 检查快照漂移；`manifest.json` 记录来源 commit 与 SHA-256。详细 Wiki 文档遵循其 CC-BY-NC-SA-4.0 许可，见 [THIRD_PARTY.md](THIRD_PARTY.md)。
 
-在 Java 17 环境执行 `gradlew.bat --no-daemon check build` 可运行回归并打包；Linux/macOS 使用 `./gradlew --no-daemon check build`。双版本的真实 JAR 接口检查脚本为 `tools/check_ssc_api.py`。这些检查不代替实际进服、变形与重连验收，详见 [本次核对记录](docs/compatibility-and-knowledge-2026-10-15.md)。
+在 Java 21 环境执行 `gradlew.bat --no-daemon check build` 可运行回归并打包；Linux/macOS 使用 `./gradlew --no-daemon check build`。双版本的真实 JAR 接口检查脚本为 `tools/check_ssc_api.py`。这些检查不代替实际进服、变形与重连验收，详见 [本次核对记录](docs/compatibility-and-knowledge-2026-10-15.md)。
 
 ---
 
 ## 依赖
 
-- **必装**：Fabric Loader ≥0.16、Fabric API、Minecraft 1.20.1、Java ≥17
+- **必装**：Fabric Loader ≥0.16、Fabric API、Minecraft 1.21.1、Java ≥21
 - **软依赖**（装了才解锁对应工具）：Trinkets（饰品栏）、Shape Shifter's Curse / SSCA（形态、Apoli 资源、知识库、食物修正）
 - **可选**：Simple Voice Chat（语音功能预留，Phase 3 开发中）
 

@@ -53,9 +53,14 @@ public final class TargetContext {
     }
     public static String describe(ItemStack stack) {
         net.minecraft.nbt.NbtCompound visible=new net.minecraft.nbt.NbtCompound();
-        if(stack.getNbt()!=null) for(String key:java.util.List.of("Potion","Spell","Level","CastLevel","Uses")) {
-            var value=stack.getNbt().get(key); if(value!=null) visible.put(key,value.copy());
+        var custom=stack.getOrDefault(net.minecraft.component.DataComponentTypes.CUSTOM_DATA,
+                net.minecraft.component.type.NbtComponent.DEFAULT).copyNbt();
+        for(String key:java.util.List.of("Spell","Level","CastLevel","Uses")) {
+            var value=custom.get(key); if(value!=null) visible.put(key,value.copy());
         }
+        var potion=stack.get(net.minecraft.component.DataComponentTypes.POTION_CONTENTS);
+        if(potion!=null) potion.potion().ifPresent(entry -> visible.putString("Potion",
+                String.valueOf(Registries.POTION.getId(entry.value()))));
         // Do not export RuneScheme slots, written-book pages or arbitrary entity/private NBT.
         String data=visible.isEmpty()?"":visible.toString();
         return stack.getName().getString() + " [" + Registries.ITEM.getId(stack.getItem()) + "] ×" + stack.getCount()

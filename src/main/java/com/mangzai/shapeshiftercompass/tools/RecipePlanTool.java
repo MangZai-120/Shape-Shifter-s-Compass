@@ -39,23 +39,24 @@ public final class RecipePlanTool implements CompassTool {
     static List<ItemStack> planningStock(ItemStack target,List<ItemStack> backpack,List<ItemStack> offhand) {
         List<ItemStack> result=new ArrayList<>();
         for(List<ItemStack> source:List.of(backpack,offhand)) for(ItemStack stack:source)
-            if(!stack.isEmpty() && !ItemStack.canCombine(stack,target)) result.add(stack.copy());
+            if(!stack.isEmpty() && !ItemStack.areItemsAndComponentsEqual(stack,target)) result.add(stack.copy());
         return result;
     }
     private void load() {
         recipes.clear(); sourceNote="";
         var mc=MinecraftClient.getInstance();
         int scanned=0;
-        for(Recipe<?> recipe:mc.world.getRecipeManager().values()) {
+        for(var entry:mc.world.getRecipeManager().values()) {
+            Recipe<?> recipe = entry.value();
             if(++scanned>20000) { sourceNote=" 配方数量超过本次查询上限，部分配方未检索。"; break; }
             try {
-                ItemStack output=recipe.getOutput(mc.world.getRegistryManager());
+                ItemStack output=recipe.getResult(mc.world.getRegistryManager());
                 if(output.isEmpty()) continue;
                 List<Need> needs=new ArrayList<>();
                 for(Ingredient ingredient:recipe.getIngredients()) if(!ingredient.isEmpty()) needs.add(new Need(
                         Arrays.asList(ingredient.getMatchingStacks()),1,ingredient::test));
                 if(needs.isEmpty()) continue;
-                recipes.add(new Plan(recipe.getId().toString(),output.copy(),needs,recipe.getType().toString(),"",false));
+                recipes.add(new Plan(entry.id().toString(),output.copy(),needs,recipe.getType().toString(),"",false));
             } catch(RuntimeException ignored) { /* dynamic output, handled below if supported */ }
         }
         try {
@@ -92,7 +93,7 @@ public final class RecipePlanTool implements CompassTool {
         recipes.sort(Comparator.comparing(Plan::id));
     }
     private static Need exact(List<ItemStack> choices) {
-        return new Need(choices,Math.max(1,choices.get(0).getCount()),s->choices.stream().anyMatch(c->ItemStack.canCombine(c,s)));
+        return new Need(choices,Math.max(1,choices.get(0).getCount()),s->choices.stream().anyMatch(c->ItemStack.areItemsAndComponentsEqual(c,s)));
     }
     private static MaterialAllocator.Allocation allocate(Plan plan,int times,List<ItemStack> stock) {
         int[] available=stock.stream().mapToInt(ItemStack::getCount).toArray(), required=new int[plan.needs.size()];
@@ -104,10 +105,10 @@ public final class RecipePlanTool implements CompassTool {
         return MaterialAllocator.allocate(available,required,accepts);
     }
     private void expand(ItemStack target,int count,List<ItemStack> stock,Set<String> path,int depth,int[] budget,StringBuilder out) {
-        String prefix="  ".repeat(depth), key=Registries.ITEM.getId(target.getItem())+String.valueOf(target.getNbt());
+        String prefix="  ".repeat(depth), key=Registries.ITEM.getId(target.getItem())+target.getComponents().toString();
         if(depth>=4 || budget[0]--<=0 || !path.add(key)) { out.append(prefix).append("待获取：").append(target.getName().getString()).append(" ×").append(count).append("（深度/循环边界）\n"); return; }
         Plan best=null; int bestMissing=Integer.MAX_VALUE;
-        for(Plan p:recipes) if(p.output.getItem()==target.getItem() && (!target.hasNbt() || ItemStack.canCombine(p.output,target))) {
+        for(Plan p:recipes) if(p.output.getItem()==target.getItem() && (target.getComponentChanges().isEmpty() || ItemStack.areItemsAndComponentsEqual(p.output,target))) {
             int times=(count+p.output.getCount()-1)/p.output.getCount();
             int missing=Arrays.stream(allocate(p,times,stock).missing()).sum();
             if(missing<bestMissing) { best=p; bestMissing=missing; }

@@ -60,14 +60,15 @@ public class RecipeQueryTool implements CompassTool {
         DynamicRegistryManager drm = mc.world.getRegistryManager();
         StringBuilder sb = new StringBuilder();
         int found = 0;
-        for (Recipe<?> r : mc.world.getRecipeManager().values()) {
+        for (var entry : mc.world.getRecipeManager().values()) {
+            Recipe<?> r = entry.value();
             ItemStack out;
             try {
-                out = r.getOutput(drm);
+                out = r.getResult(drm);
             } catch (Exception e) {
                 continue;
             }
-            if (out.isEmpty() || out.getItem() != target || (targetStack.hasNbt() && !ItemStack.canCombine(out,targetStack))) {
+            if (out.isEmpty() || out.getItem() != target || (!targetStack.getComponentChanges().isEmpty() && !ItemStack.areItemsAndComponentsEqual(out,targetStack))) {
                 continue;
             }
             found++;

@@ -357,7 +357,7 @@ public class ChatScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double amount) {
         scroll -= (int) (amount * 12);
         if (scroll < 0) {
             scroll = 0;
@@ -368,7 +368,7 @@ public class ChatScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        this.renderBackground(ctx);
+        this.renderBackground(ctx, mouseX, mouseY, delta);
 
         if (!compact) {
             ctx.fill(listX - 2, panelY, listX + listW + 2, panelY + panelH, 0xA0000000);

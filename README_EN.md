@@ -1,10 +1,12 @@
+> **Minecraft 1.21.1 Fabric port**: Requires Java 21. Reads live state from `shape-shifter-curse-unofficial` and supports the inspected 1.21.1 SSCA spellbook APIs. Bundled SSC/SSCA knowledge remains a historical 1.20.1 snapshot, with an explicit runtime notice. See the [port notes](docs/porting-1.21.1.md).
+
 <div align="center">
 
 # ✦ Shape Shifter's Compass
 
 ### In-Game AI Assistant · Built for Shape Shifter's Curse (SSC) & Addon (SSCA)
 
-Fabric 1.20.1 · Client-side Mod · OpenAI-Compatible API · `1.1.4`
+Fabric 1.21.1 · Client-side Mod · OpenAI-Compatible API · `1.1.4+mc1.21.1`
 
 </div>
 
@@ -21,7 +23,7 @@ Fabric 1.20.1 · Client-side Mod · OpenAI-Compatible API · `1.1.4`
 ## Core Features
 
 - 🧭 **HUD Floating Ball + Small Window**: Always on screen without blocking gameplay; press **K** to bring up the interactive window, click the "▢" in the title bar to expand the full window.
-- 🛠️ **20 Built-in Tools**: The AI can read your game state, get precise food values, search the knowledge base, perform web search, and (with cheats) execute commands — **reads only your own data; cheat tools are server-side permission enforced**.
+- 🛠️ **21 Built-in Tools**: The AI can read your game state, get precise food values, search the knowledge base, perform web search, and (with cheats) execute commands — **reads only your own data; cheat tools are server-side permission enforced**.
 - 🍗 **AppleSkin-Style Food Values**: `get_food_info` / `get_inventory` / `get_equipment` all include a food's hunger value, saturation restore (`hunger × saturation coefficient × 2`), whether it's edible right now, and status effects; with Apoli installed, the current form's `modify_food` modifier is applied.
 - 📚 **SSC/SSCA Knowledge Base**: Built-in entries for forms, evolution, mechanics, and commands (`knowledge/core/`); extend by simply dropping `.md` files into the directory.
 - 💬 **WeChat-Style Bubble Window**: Local typewriter effect, scrollbar, session list, ↑↓ history navigation.
@@ -46,11 +48,11 @@ The default hotkey is **K** (`key.ssc_compass.open`, rebindable in Controls). If
 
 Historical-message editing and regeneration, the local search/tools page, its buttons, and the dedicated Shift+K entry have been removed. K and Shift+K both open chat. The assistant continues to query game state and knowledge through its internal tools.
 
-1.1.1 fixes DSML tool-call decoding and preserves actual tool outcomes when the model returns no final text. `add_spellbook_experience` explicitly targets the equipped or held book and requires cheat mode plus OP2. Equipped support requires the matching updated SSCA server build; older servers receive a clear unsupported message. See [the version notes](docs/changes-1.1.md).
+1.1.1 fixes DSML tool-call decoding and preserves actual tool outcomes when the model returns no final text. `add_spellbook_experience` explicitly targets the equipped or held book and requires cheat mode plus OP2. Equipped support requires the matching updated SSCA server build; older servers receive a clear unsupported message. See [the version notes](docs/porting-1.21.1.md).
 
-1.1.2 explicitly sends DeepSeek thinking settings, handles empty token-limit responses with one bounded non-thinking recovery, and defaults new configurations to 8192 output tokens. See [the version notes](docs/changes-1.1.md).
+1.1.2 explicitly sends DeepSeek thinking settings, handles empty token-limit responses with one bounded non-thinking recovery, and defaults new configurations to 8192 output tokens. See [the version notes](docs/porting-1.21.1.md).
 
-1.1.3 executes recognized explicit Chinese spellbook EXP requests locally, selects the currently equipped or held book, and returns server feedback without an AI request. Cheat mode and OP2 remain required. Main-hand reporting and recovery after read-only queries are corrected. See [the version notes](docs/changes-1.1.md).
+1.1.3 executes recognized explicit Chinese spellbook EXP requests locally, selects the currently equipped or held book, and returns server feedback without an AI request. Cheat mode and OP2 remain required. Main-hand reporting and recovery after read-only queries are corrected. See [the version notes](docs/porting-1.21.1.md).
 
 ## Built-in Tools
 
@@ -137,7 +139,7 @@ The knowledge base lives in `assets/ssc_compass/knowledge/core/` — plain Markd
 
 ## Dependencies
 
-- **Required**: Fabric Loader ≥0.16, Fabric API, Minecraft 1.20.1, Java ≥17
+- **Required**: Fabric Loader ≥0.16, Fabric API, Minecraft 1.21.1, Java ≥21
 - **Soft dependencies** (install to unlock corresponding tools): Trinkets (accessory slots), Shape Shifter's Curse / SSCA (forms, Apoli resources, knowledge base, food modifiers)
 - **Optional**: Simple Voice Chat (voice feature reserved, Phase 3 in development)
 

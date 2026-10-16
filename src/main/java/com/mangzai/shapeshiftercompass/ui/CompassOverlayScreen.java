@@ -289,7 +289,7 @@ public class CompassOverlayScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double amount) {
         CompassConfig cfg = CompassConfig.get();
         float fscale = Math.max(0.4f, cfg.hudFontPct / 100.0f);
         int lineCount = CompassHud.answerLineCount(this.client, bw, fscale);

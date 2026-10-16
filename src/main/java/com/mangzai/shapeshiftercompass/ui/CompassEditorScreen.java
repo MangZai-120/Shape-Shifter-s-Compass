@@ -133,7 +133,7 @@ public class CompassEditorScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        this.renderBackground(ctx);
+        this.renderBackground(ctx, mouseX, mouseY, delta);
         ctx.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 12, 0xFFFFFFFF);
         ctx.drawCenteredTextWithShadow(this.textRenderer, Text.translatable("ssc_compass.editor.hint"),
                 this.width / 2, 26, 0xFFAAAAAA);

@@ -78,6 +78,14 @@ public final class CompassRegressionTest {
         }
         check(SscReflection.component(new GeneratedKey(), player, name -> ComponentKey.class) instanceof OldComponent,
                 "nonpublic generated CCA implementation is invoked through its public interface");
+        check(SscReflection.component(new GeneratedKey(), player, name -> {
+            if (name.equals("org.ladysnake.cca.api.v3.component.ComponentKey")) return ComponentKey.class;
+            throw new ClassNotFoundException(name);
+        }) instanceof OldComponent, "CCA 6 org.ladysnake public API is supported");
+        check(SscReflection.component(new GeneratedKey(), player, name -> {
+            if (name.equals("dev.onyxstudios.cca.api.v3.component.ComponentKey")) return ComponentKey.class;
+            throw new ClassNotFoundException(name);
+        }) instanceof OldComponent, "older CCA namespace remains an explicit fallback");
     }
 
     private static void indexContracts() {

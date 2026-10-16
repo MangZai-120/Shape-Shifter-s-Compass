@@ -18,7 +18,7 @@ public final class CompassHud {
     public static final int BALL = 14;
     public static final int BOX_H = 112;
     private static final boolean SSC_LOADED =
-            net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("shape-shifter-curse")
+            com.mangzai.shapeshiftercompass.tools.SscBridge.formAvailable()
             || net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("ssc_addon");
     private static String lastAnswer = "";
     private static boolean boxOpen = false;
