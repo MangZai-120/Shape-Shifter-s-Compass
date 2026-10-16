@@ -57,6 +57,22 @@ tasks.register('compassRegressionTest', JavaExec) {
     workingDir = projectDir
 }
 check.dependsOn compassRegressionTest
+tasks.register('compassFeatureTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.mangzai.shapeshiftercompass.tools.FeatureRegressionTest'
+    workingDir = layout.buildDirectory.dir('feature-regression').get().asFile
+    systemProperty 'fabric.development', 'true'
+    systemProperty 'fabric.remapClasspathFile', file('.gradle/loom-cache/remapClasspath.txt').absolutePath
+    systemProperty 'fabric.classPathGroups', (sourceSets.main.output.files + sourceSets.test.output.files).collect { it.absolutePath }.join(File.pathSeparator)
+    doFirst {
+        workingDir.mkdirs()
+        def cpFile = new File(workingDir, 'test-classpath.txt')
+        cpFile.setText(classpath.asPath, 'UTF-8')
+        systemProperty 'compass.testClasspath', cpFile.absolutePath
+    }
+}
+check.dependsOn compassFeatureTest
 
 jar {
     from('THIRD_PARTY.md')

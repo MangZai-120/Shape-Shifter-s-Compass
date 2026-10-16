@@ -77,7 +77,8 @@ public class RunCommandTool implements CompassTool {
         }
         final String cmd = command;
         // 开启命令反馈抑制窗口并追踪结果：反馈仅进后台日志、不刷屏聊天框，同时用于判定命令成败
-        CompletableFuture<String> f = CommandFeedbackSuppressor.startSuppressionAndAwait(head);
+        CompletableFuture<String> f = cmd.startsWith("ssc_addon moon_dust_spellbook exp addon ")
+                ? CommandFeedbackSuppressor.awaitSpellbookFeedback() : CommandFeedbackSuppressor.startSuppressionAndAwait(head);
         mc.execute(() -> mc.player.networkHandler.sendChatCommand(cmd));
         try {
             String fb = f.get(2, TimeUnit.SECONDS);
@@ -86,7 +87,9 @@ public class RunCommandTool implements CompassTool {
             }
             return "已执行 /" + cmd + "，游戏反馈：" + fb;
         } catch (Exception e) {
-            return "已执行 /" + cmd + "（未在 2 秒内收到明确反馈，通常表示已成功）。";
+            return "命令已发送 /" + cmd + "；2 秒内未收到明确服务器反馈，结果未确认。不要据此声称成功，也不要自动重复执行加经验、给予物品等操作。";
+        } finally {
+            CommandFeedbackSuppressor.endSuppression();
         }
     }
 }

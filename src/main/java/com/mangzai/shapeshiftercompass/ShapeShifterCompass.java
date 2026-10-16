@@ -57,6 +57,11 @@ public class ShapeShifterCompass implements ClientModInitializer {
         ToolRegistry.register(new com.mangzai.shapeshiftercompass.tools.ListModsTool());
         ToolRegistry.register(new com.mangzai.shapeshiftercompass.tools.FoodInfoTool());
         ToolRegistry.register(new com.mangzai.shapeshiftercompass.tools.SaveMemoryTool());
+        ToolRegistry.register(new com.mangzai.shapeshiftercompass.tools.SpellbookStatusTool());
+        ToolRegistry.register(new com.mangzai.shapeshiftercompass.tools.AddSpellbookExperienceTool());
+        ToolRegistry.register(new com.mangzai.shapeshiftercompass.tools.TargetInfoTool());
+        ToolRegistry.register(new com.mangzai.shapeshiftercompass.tools.RecipePlanTool());
+        ToolRegistry.register(new com.mangzai.shapeshiftercompass.tools.EvolutionAdviceTool());
 
         openKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.ssc_compass.open",
@@ -73,8 +78,10 @@ public class ShapeShifterCompass implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openKey.wasPressed()) {
+                com.mangzai.shapeshiftercompass.tools.TargetContext.capture(client);
                 CompassHud.setBoxOpen(true);
-                client.setScreen(new CompassOverlayScreen(null));
+                var previous=client.currentScreen;
+                client.setScreen(new CompassOverlayScreen(previous));
             }
             // 容器界面打开时 KeyBinding 不触发（且 keyPressed 可能被其它 mod 截断），改用物理键边缘检测兑底
             if (client.currentScreen instanceof HandledScreen && client.getWindow() != null) {
@@ -83,6 +90,7 @@ public class ShapeShifterCompass implements ClientModInitializer {
                         && InputUtil.isKeyPressed(client.getWindow().getHandle(), code);
                 if (down && !openKeyDown
                         && !(client.currentScreen.getFocused() instanceof TextFieldWidget)) {
+                    com.mangzai.shapeshiftercompass.tools.TargetContext.capture(client);
                     CompassHud.setBoxOpen(true);
                     client.setScreen(new CompassOverlayScreen(client.currentScreen));
                 }

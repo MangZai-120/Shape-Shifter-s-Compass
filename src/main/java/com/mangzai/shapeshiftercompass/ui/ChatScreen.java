@@ -17,20 +17,13 @@ import java.util.List;
 
 /**
  * Phase 1 第⑤步聊天界面：微信式气泡（自己右侧蓝、AI 左侧灰绿）、本地打字机效果、
- * 滚动条、会话占用 tooltip；左侧会话列表可新建/切换/删除，点击自己的消息可编辑重生成。
+ * 滚动条、会话占用 tooltip；左侧会话列表可新建/切换/删除，消息支持复制。
  */
 public class ChatScreen extends Screen {
     private final Screen parent;
     private boolean compact;
     private TextFieldWidget input;
     private boolean waiting = false;
-    private int editingIndex = -1;
-    /** 内联编辑：在原气泡位置显示一个输入框 */
-    private TextFieldWidget editField = null;
-    private int editBubbleX = 0;
-    private int editBubbleW = 0;
-    private int editBubbleY = 0;
-    private int editBubbleH = 0;
     /** 动态思考动画计数器 */
     private int thinkTick = 0;
     /** 输入框 ↑/↓ 历史导航 */
@@ -48,6 +41,7 @@ public class ChatScreen extends Screen {
     private int typingMsgIndex = -1;
     private int typingChars = 0;
     private String voiceStatus = "";
+    private final List<int[]> evidenceHitboxes=new ArrayList<>();
 
     private int listX;
     private int listW;
@@ -56,7 +50,6 @@ public class ChatScreen extends Screen {
     private int panelY;
     private int panelH;
 
-    private final List<int[]> msgHitboxes = new ArrayList<>();
     /** AI 消息「复制」按钮点击区：[消息索引, x1, y1, x2, y2]。 */
     private final List<int[]> copyHitboxes = new ArrayList<>();
     /** 「已复制」提示显示到期时间戳（System.currentTimeMillis）。 */
@@ -99,7 +92,7 @@ public class ChatScreen extends Screen {
         if (!compact) {
             addDrawableChild(ButtonWidget.builder(Text.literal("+ 新对话"), b -> {
                 ConversationStore.newConversation();
-                editingIndex = -1;
+
                 scroll = 0;
                 typingMsgIndex = -1;
                 autoScroll = true;
@@ -119,7 +112,7 @@ public class ChatScreen extends Screen {
                 String label = (cur ? "▶" : "") + c.title;
                 ButtonWidget sw = ButtonWidget.builder(Text.literal(trim(label, 11)), b -> {
                     ConversationStore.switchTo(c);
-                    editingIndex = -1;
+
                     scroll = 0;
                     typingMsgIndex = -1;
                     autoScroll = true;
@@ -130,7 +123,7 @@ public class ChatScreen extends Screen {
                 addDrawableChild(sw);
                 addDrawableChild(ButtonWidget.builder(Text.literal("×"), b -> {
                     ConversationStore.delete(c);
-                    editingIndex = -1;
+
                     this.clearAndInit();
                 }).dimensions(listX + listW - 14, y, 14, 16).build());
                 y += 18;
@@ -191,7 +184,8 @@ public class ChatScreen extends Screen {
             return;
         }
         // 未配置 API key：不记录消息，由调用方提示用户先去配置
-        if (!com.mangzai.shapeshiftercompass.config.CompassConfig.get().hasKey()) {
+        if (!com.mangzai.shapeshiftercompass.config.CompassConfig.get().hasKey()
+                && com.mangzai.shapeshiftercompass.ai.LocalActionRouter.parse(input.getText()) == null) {
             return;
         }
         String text = input.getText().trim();
@@ -208,7 +202,7 @@ public class ChatScreen extends Screen {
         ConversationStore.save();
         AiClient.sendChat(new ArrayList<>(c.messages),
                 reply -> {
-                    c.messages.add(new ChatMessage("assistant", reply));
+                    c.messages.add(AiClient.answerMessage(reply));
                     startTyping(c.messages.size() - 1);
                     CompassHud.setLastAnswer(reply);
                     waiting = false;
@@ -262,9 +256,6 @@ public class ChatScreen extends Screen {
                 typingMsgIndex = -1;
             }
         }
-        if (editField != null) {
-            editField.tick();
-        }
         // 动态思考动画：点数 0→1→2→3 循环，每点间隔 5tick，3 点→0点间隔 10tick
         if (waiting || com.mangzai.shapeshiftercompass.ai.CompassState.isBusy()) {
             thinkTick++;
@@ -303,19 +294,6 @@ public class ChatScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // 内联编辑框中回车=提交，ESC=取消
-        if (editField != null && editField.isFocused()) {
-            if (keyCode == 257 || keyCode == 335) {
-                confirmEdit();
-                return true;
-            }
-            if (keyCode == 256) {
-                cancelEdit();
-                return true;
-            }
-            return editField.keyPressed(keyCode, scanCode, modifiers)
-                    || super.keyPressed(keyCode, scanCode, modifiers);
-        }
         if ((keyCode == 257 || keyCode == 335) && input.isFocused()) {
             onSend();
             return true;
@@ -339,69 +317,9 @@ public class ChatScreen extends Screen {
     }
 
     @Override
-    public boolean charTyped(char chr, int modifiers) {
-        if (editField != null && editField.isFocused()) {
-            return editField.charTyped(chr, modifiers);
-        }
-        return super.charTyped(chr, modifiers);
-    }
-
-    /** 确认内联编辑：用编辑后的文字重新生成。 */
-    private void confirmEdit() {
-        if (editField == null) {
-            return;
-        }
-        String text = editField.getText().trim();
-        Conversation c = conv();
-        if (editingIndex >= 0 && editingIndex < c.messages.size() && !text.isEmpty()) {
-            while (c.messages.size() > editingIndex) {
-                c.messages.remove(c.messages.size() - 1);
-            }
-            c.messages.add(new ChatMessage("user", text));
-            c.autoTitle();
-            waiting = true;
-            autoScroll = true;
-            ConversationStore.save();
-            AiClient.sendChat(new ArrayList<>(c.messages),
-                    reply -> {
-                        c.messages.add(new ChatMessage("assistant", reply));
-                        startTyping(c.messages.size() - 1);
-                        CompassHud.setLastAnswer(reply);
-                        waiting = false;
-                        ConversationStore.save();
-                    },
-                    err -> {
-                        if ("cancelled".equals(err)) {
-                            waiting = false;
-                            return;
-                        }
-                        String msg = "no_key".equals(err)
-                                ? Text.translatable("ssc_compass.msg.no_key").getString()
-                                : Text.translatable("ssc_compass.msg.error", err).getString();
-                        c.messages.add(new ChatMessage("assistant", msg));
-                        startTyping(c.messages.size() - 1);
-                        waiting = false;
-                        ConversationStore.save();
-                    });
-        }
-        editingIndex = -1;
-        editField = null;
-        this.setFocused(null);
-    }
-
-    /** 取消内联编辑（点错时不重新生成）。 */
-    private void cancelEdit() {
-        editingIndex = -1;
-        editField = null;
-        this.setFocused(null);
-    }
-
-    @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // 1) 先处理内联编辑框的点击
-        if (editField != null && mouseX >= editBubbleX && mouseX <= editBubbleX + editBubbleW
-                && mouseY >= editBubbleY && mouseY <= editBubbleY + editBubbleH) {
-            return editField.mouseClicked(mouseX, mouseY, button);
+        if(button==0) for(int[] box:evidenceHitboxes) if(mouseX>=box[1] && mouseX<=box[3] && mouseY>=box[2] && mouseY<=box[4]) {
+            client.setScreen(new EvidenceScreen(this,conv().messages.get(box[0]).evidence)); return true;
         }
         // 2) 输入框用真实坐标，直接转发物理坐标
         if (button == 0 && mouseX >= visInputX && mouseX <= visInputX + visInputW
@@ -411,7 +329,6 @@ public class ChatScreen extends Screen {
             return true;
         }
         // 3) 让按钮（⚙设置/⬜紧凑/♪语音/发送/会话列表×删除）优先处理点击；
-        //    这样点顶部「⚙设置」等按钮时不会被下方的气泡扫描误拦截进消息编辑模式。
         if (super.mouseClicked(mouseX, mouseY, button)) {
             return true;
         }
@@ -426,23 +343,6 @@ public class ChatScreen extends Screen {
                 }
             }
         }
-        // 4) super 未消费（点中的不是任何按钮/输入框）：再判断是否点中自己的消息气泡 → 进入内联编辑
-        if (button == 0 && mouseX >= chatX && mouseX <= chatX + chatW) {
-            for (int[] hb : msgHitboxes) {
-                if (mouseY >= hb[1] && mouseY <= hb[2]) {
-                    ChatMessage m = conv().messages.get(hb[0]);
-                    if ("user".equals(m.role)) {
-                        startInlineEdit(hb[0]);
-                        return true;
-                    }
-                }
-            }
-        }
-        // 5) 编辑中点击其它任何地方 → 取消编辑
-        if (editField != null) {
-            cancelEdit();
-            return true;
-        }
         return false;
     }
 
@@ -454,50 +354,6 @@ public class ChatScreen extends Screen {
             return input.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
         }
         return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
-    }
-
-    /** 在指定用户气泡位置开启内联编辑框。 */
-    private void startInlineEdit(int msgIdx) {
-        Conversation c = conv();
-        if (msgIdx < 0 || msgIdx >= c.messages.size()) {
-            return;
-        }
-        ChatMessage m = c.messages.get(msgIdx);
-        if (!"user".equals(m.role)) {
-            return;
-        }
-        // 计算气泡位置/尺寸（与渲染逻辑一致）
-        int top = panelY + 26;
-        float cfs = Math.max(0.5f, Math.min(2.0f,
-                com.mangzai.shapeshiftercompass.config.CompassConfig.get().chatFontPct / 100.0f));
-        int maxBubbleW = (int) (chatW * 0.72);
-        int wrapW = Math.max(20, (int) (maxBubbleW / cfs));
-        int lineHs = Math.max(1, Math.round(10 * cfs));
-        // 找到该消息的 y 起点
-        int y = top - scroll;
-        for (int i = 0; i < msgIdx; i++) {
-            ChatMessage mi = c.messages.get(i);
-            if ("system".equals(mi.role)) continue;
-            List<OrderedText> lines = this.textRenderer.wrapLines(Text.literal(mi.content == null ? "" : mi.content), wrapW);
-            y += Math.max(1, lines.size()) * lineHs + 6 + 4;
-        }
-        List<OrderedText> lines = this.textRenderer.wrapLines(Text.literal(m.content == null ? "" : m.content), wrapW);
-        int textW = 0;
-        for (OrderedText line : lines) {
-            textW = Math.max(textW, this.textRenderer.getWidth(line));
-        }
-        int bw = (int) (textW * cfs) + 10;
-        editBubbleX = chatX + chatW - 6 - bw;
-        editBubbleW = bw;
-        editBubbleY = y;
-        editBubbleH = Math.max(1, lines.size()) * lineHs + 6;
-        editingIndex = msgIdx;
-        editField = new TextFieldWidget(this.textRenderer, editBubbleX + 5, editBubbleY + 3, editBubbleW - 10, editBubbleH - 6,
-                Text.literal(""));
-        editField.setMaxLength(4000);
-        editField.setText(m.content == null ? "" : m.content);
-        addSelectableChild(editField);
-        setInitialFocus(editField);
     }
 
     @Override
@@ -527,11 +383,7 @@ public class ChatScreen extends Screen {
         Conversation c = conv();
         String head = trim(c.title, 14) + "  (" + c.estimateTokens() + " tok, "
                 + ConversationStore.humanBytes(ConversationStore.bytesOf(c)) + ")";
-        ctx.drawTextWithShadow(this.textRenderer, Text.literal(head), chatX + 4, panelY + 4, 0xFFFFFFFF);
-        if (editingIndex >= 0) {
-            ctx.drawTextWithShadow(this.textRenderer, Text.literal("[编辑中 · 发送将重新生成]"),
-                    chatX + 4, panelY + 14, 0xFFFFC107);
-        }
+        ctx.drawTextWithShadow(this.textRenderer, Text.literal(textRenderer.trimToWidth(head,Math.max(20,chatW-(compact?60:44)))), chatX + 4, panelY + 4, 0xFFFFFFFF);
         if (!voiceStatus.isEmpty()) {
             ctx.drawTextWithShadow(this.textRenderer, Text.literal(voiceStatus),
                     chatX + 4, panelY + panelH - 40, 0xFF9AD0FF);
@@ -545,8 +397,8 @@ public class ChatScreen extends Screen {
         int lineHs = Math.max(1, Math.round(10 * cfs));
         int wrapW = Math.max(20, (int) (maxBubbleW / cfs));
 
-        msgHitboxes.clear();
         copyHitboxes.clear();
+        evidenceHitboxes.clear();
         ctx.enableScissor(chatX, top, chatX + chatW, bottom);
         int y = top - scroll;
         for (int i = 0; i < c.messages.size(); i++) {
@@ -566,33 +418,30 @@ public class ChatScreen extends Screen {
                 textW = Math.max(textW, this.textRenderer.getWidth(line));
             }
             int bw = (int) (textW * cfs) + 10;
+            if(!self && m.evidence!=null && !m.evidence.isEmpty()) bw=Math.max(bw,textRenderer.getWidth(Text.translatable("ssc_compass.chat.evidence"))+26);
             // AI 气泡在底部预留一小行放复制图标 ❐；用户气泡保持原高
             int iconPad = self ? 0 : 10;
             int bh = Math.max(1, lines.size()) * lineHs + 6 + iconPad;
             int bx = self ? (chatX + chatW - 6 - bw) : (chatX + 6);
-            int yStart = y;
             if (y + bh >= top && y <= bottom) {
                 ctx.fill(bx, y, bx + bw, y + bh, self ? 0xE02A5A8A : 0xE02C332C);
                 ctx.drawBorder(bx, y, bw, bh, self ? 0xFF4A8ACA : 0xFF4A5A4A);
-                if (i != editingIndex) {
-                    ctx.getMatrices().push();
-                    ctx.getMatrices().scale(cfs, cfs, 1.0f);
-                    float ly = y + 4;
-                    for (OrderedText line : lines) {
-                        ctx.drawTextWithShadow(this.textRenderer, line,
-                                (int) ((bx + 5) / cfs), (int) (ly / cfs), 0xFFEFEFEF);
-                        ly += lineHs;
-                    }
-                    ctx.getMatrices().pop();
+                ctx.getMatrices().push();
+                ctx.getMatrices().scale(cfs, cfs, 1.0f);
+                float ly = y + 4;
+                for (OrderedText line : lines) {
+                    ctx.drawTextWithShadow(this.textRenderer, line,
+                            (int) ((bx + 5) / cfs), (int) (ly / cfs), 0xFFEFEFEF);
+                    ly += lineHs;
                 }
+                ctx.getMatrices().pop();
             }
             if (self) {
-                msgHitboxes.add(new int[]{i, yStart, y + bh});
                 y += bh + 4;
             } else {
-                // AI 消息：气泡内右下角画复制 ❐ 图标按钮（打字机未打完/编辑中/空消息不画）
+                // AI 消息：气泡内右下角画复制 ❐ 图标按钮（打字机未打完/空消息不画）
                 boolean fullyShown = !(i == typingMsgIndex && typingChars < fullContent.length());
-                if (i != editingIndex && fullyShown && !fullContent.isEmpty()
+                if (fullyShown && !fullContent.isEmpty()
                         && y + bh >= top && y + bh <= bottom) {
                     int iconW = this.textRenderer.getWidth("❐");
                     int iconH = 8;
@@ -603,6 +452,12 @@ public class ChatScreen extends Screen {
                     ctx.drawTextWithShadow(this.textRenderer, Text.literal("❐"),
                             cbx, cby, hover ? 0xFFFFFFFF : 0xFFB0E0B0);
                     copyHitboxes.add(new int[]{i, cbx - 1, cby - 1, cbx + iconW + 1, cby + iconH + 1});
+                    if(m.evidence!=null && !m.evidence.isEmpty()) {
+                        String label=Text.translatable("ssc_compass.chat.evidence").getString();
+                        int ex=cbx-textRenderer.getWidth(label)-8;
+                        ctx.drawTextWithShadow(textRenderer,Text.literal(label),ex,cby,0xFFAADDDD);
+                        evidenceHitboxes.add(new int[]{i,ex-1,cby-1,cbx-5,cby+iconH+1});
+                    }
                 }
                 y += bh + 4;
             }
@@ -637,14 +492,6 @@ public class ChatScreen extends Screen {
 
         // 输入框：标准尺寸直接渲染，不 scale（视觉=widget=命中三者一致，IME 正常）
         input.render(ctx, mouseX, mouseY, delta);
-        // 内联编辑框渲染（高亮背景）
-        if (editField != null) {
-            ctx.fill(editBubbleX - 1, editBubbleY - 1, editBubbleX + editBubbleW + 1, editBubbleY + editBubbleH + 1, 0x80FFC107);
-            ctx.drawBorder(editBubbleX, editBubbleY, editBubbleW, editBubbleH, 0xFFFFC107);
-            editField.render(ctx, mouseX, mouseY, delta);
-            ctx.drawTextWithShadow(this.textRenderer, Text.literal("↵ 确认 · 点外面取消"),
-                    chatX + 4, editBubbleY + editBubbleH + 2, 0xFFFFC107);
-        }
         // 「已复制」瞬时提示
         if (System.currentTimeMillis() < copiedTipUntil) {
             ctx.drawCenteredTextWithShadow(this.textRenderer,

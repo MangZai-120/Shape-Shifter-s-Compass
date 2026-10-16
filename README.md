@@ -4,7 +4,7 @@
 
 ### 游戏内 AI 助手 · 专为《幻形者诅咒 SSC / 附属 SSCA》打造
 
-Fabric 1.20.1 · 客户端模组 · OpenAI 兼容 API · `1.0.1`
+Fabric 1.20.1 · 客户端模组 · OpenAI 兼容 API · `1.1.4`
 
 </div>
 
@@ -21,10 +21,10 @@ Fabric 1.20.1 · 客户端模组 · OpenAI 兼容 API · `1.0.1`
 ## 核心特性
 
 - 🧭 **HUD 悬浮球 + 小框**：屏幕常驻，不挡操作；按 **K** 唤出交互小窗，点标题栏「▢」展开完整大窗。
-- 🛠️ **15 个内置工具**：AI 可读取你的游戏状态、精确食物数值、检索知识库、联网搜索、（作弊）执行命令——**只读本人数据，作弊工具服务端权限强校验**。
+- 🛠️ **21 个内置工具**：AI 可读取你的游戏状态、精确食物数值、检索知识库、联网搜索、（作弊）执行命令——**只读本人数据，作弊工具服务端权限强校验**。
 - 🍗 **AppleSkin 同款食物数值**：`get_food_info` / `get_inventory` / `get_equipment` 都带食物的饥饿值、饱和度回复量（`饥饿 × 饱和系数 × 2`）、能否现在吃、附带状态效果，装了 Apoli 还会套用当前形态的 `modify_food` 修正。
 - 📚 **SSC/SSCA 专属知识库**：内置形态、进化、机制、指令条目（`knowledge/core/`），扩展只需往目录丢 `.md`。
-- 💬 **微信式气泡大窗**：本地打字机、滚动条、会话列表、点自己消息可内联编辑重生成、↑↓ 历史导航。
+- 💬 **微信式气泡大窗**：本地打字机、滚动条、会话列表、↑↓ 历史导航。
 - 🔒 **身份防越狱**：系统提示词锁死 Compass 角色，玩家无论怎么说都不破防。
 - ⚙️ **多厂商预设**：OpenAI / z.ai GLM / DeepSeek / Moonshot / OpenRouter / OpenCode Zen / 自定义，一键切换（**推荐 DeepSeek V4 Flash**）。
 - 🎨 **可视化布局编辑器**：拖动悬浮球到屏幕任意位置，字体 / 透明度 / 宽高滑条无极调节。
@@ -37,6 +37,14 @@ Fabric 1.20.1 · 客户端模组 · OpenAI 兼容 API · `1.0.1`
 1. 把 jar 丢进 `mods/`（需 Fabric API；Trinkets、SSC/SSCA 为软依赖，装了才解锁对应工具）。
 2. 进游戏按 **K** 唤出小窗 → 点提示文字或标题栏进 **⚙ 设置** → 选 AI 厂商（推荐 DeepSeek）→ 填 API Key → 保存。
 3. 回到小窗，问：「我现在什么形态？」「月髓环怎么进化？」「使魔吃金胡萝卜有用吗？」「给我一组铁锭」（需作弊）。
+
+1.1.4 已移除旧消息编辑重生成、本地搜索与本地工具页面、工具按钮及 Shift+K 专用入口；按 K 或 Shift+K 均打开聊天小窗。聊天内的知识查询、状态读取和经验操作由助手按需调用。
+
+1.1.1 修复文本工具调用解析和空回复后的结果丢失，新增佩戴魔法书加经验入口。需要同步更新对应 SSC 分支的 SSCA；旧服务端会明确提示不支持。见 [修复与指令说明](docs/changes-1.1.md)。
+
+1.1.2 修正 DeepSeek 思考开关与额度截断处理，新配置输出上限默认8192。见 [思考模式与额度修复](docs/changes-1.1.md)。
+
+1.1.3 将“给我身上的书加1000点经验”等明确请求直接交给本地操作，实时选择佩戴或手持的书，按服务器真实结果回复，不调用AI。给经验仍需开启作弊并拥有OP2。补齐主手信息，并修复只读查询后思考截断无法继续操作的问题。见 [目标选择与输出额度修复](docs/changes-1.1.md)。
 
 默认快捷键 **K**（`key.ssc_compass.open`，可在控制设置里改）。容器界面（背包/工作台）打开时若 K 被拦截，会用物理键边缘检测兜底，以原界面为背景叠加唤出。
 
@@ -55,6 +63,11 @@ AI 会按需自动调用以下工具（function calling）。**只读类**默认
 | `get_trinkets` | 只读 | Trinkets 饰品栏（需装 Trinkets） |
 | `get_form_status` | 只读 | SSC 1.9.2 / 1.10.x 当前形态、SSC 原生法力、Apoli 资源与冷却；读数失败单独报告 |
 | `query_knowledge` | 只读 | 检索 SSC/SSCA 内置知识库（形态/进化/机制/指令） |
+| `get_spellbook_status` | 只读 | 佩戴的魔法书、卷轴等级、法力、有效冷却与已知施法障碍 |
+| `get_target_info` | 只读 | 打开罗盘时选取的悬停物品、准星方块/实体；带快照时间 |
+| `plan_crafting` | 只读 | 当前背包与副手的材料缺口、最多4层/40步制作路线，包含可读取的SSCA加工示例 |
+| `get_evolution_advice` | 只读 | 同步进化路线、点数、前置节点、分支与道具条件 |
+| `save_memory` | 本地记录 | 按玩家明确要求保存游戏知识更正 |
 | `get_player_status` | 只读 | 血量/饥饿/饱和/护甲/经验/坐标/维度/状态效果/属性 |
 | `web_search` | 只读·异步 | 联网搜索（web / Minecraft Wiki / Wikipedia） |
 | `get_seed` | 只读 | 世界种子（单人直接读；服务器提示 `/seed`） |
@@ -63,6 +76,7 @@ AI 会按需自动调用以下工具（function calling）。**只读类**默认
 | `locate_structure` | 🔒作弊·异步 | 定位最近的结构或生物群系 |
 | `run_command` | 🔒作弊·异步 | 执行白名单内 Minecraft 命令（op/stop/ban 等危险命令一律拒绝） |
 | `set_player_data` | 🔒作弊·异步 | 改生命上限 / 补满血 / 补满饱食度 / 设经验等级 |
+| `add_spellbook_experience` | 🔒作弊·异步 | 给佩戴或手持的月尘魔法书加经验，由服务端指令执行，旧服不支持时明确说明 |
 
 > 作弊工具执行的命令反馈由 `ChatHudMixin` 抑制，**仅写入后台日志、不显示到玩家聊天框**；`/locate` 的坐标反馈会先交给 `LocateTool` 解析再吞掉。
 
@@ -72,7 +86,7 @@ AI 会按需自动调用以下工具（function calling）。**只读类**默认
 
 配置文件：`config/ssc_compass.json`，也可游戏内按 **⚙** 打开 ConfigScreen 可视化编辑（apiKey 渲染时全 `*` 遮罩；作弊开关仅 OP 可见）。
 
-**AI 连接：** `provider` / `baseUrl` / `apiKey` / `model` / `temperature`(0.7) / `maxTokens`(1024) / `maxHistory`(20)
+**AI 连接：** `provider` / `baseUrl` / `apiKey` / `model` / `temperature`(0.7) / `maxTokens`(8192) / `maxHistory`(20)
 
 **HUD 布局：** `hudBallX/Y`(-1 默认右侧/居中) / `hudBoxX/Y`(4,4) / `hudBoxWidth`(160) / `hudBoxHeight`(112) / `hudVisible`(true) / `hudBgAlpha`(128) / `hudFontPct`(75) / `chatFontPct`(100)
 
@@ -97,7 +111,7 @@ AI 会按需自动调用以下工具（function calling）。**只读类**默认
 
 ## 界面速览
 
-- **ChatScreen（大窗）**：左侧会话列表（新建/切换/删除，悬浮显示 token 与字节占用）、右侧气泡对话（自己右蓝、AI 左灰绿）、打字机、滚动条、**点自己消息原位内联编辑 → 截断后续对话重新生成**、↑↓ 历史导航、紧凑/展开切换。
+- **ChatScreen（大窗）**：左侧会话列表（新建/切换/删除，悬浮显示 token 与字节占用）、右侧气泡对话（自己右蓝、AI 左灰绿）、打字机、滚动条、↑↓ 历史导航、紧凑/展开切换。
 - **CompassOverlayScreen（小窗）**：K 键唤出，半透明、鼠标可见、不整屏遮挡；直接打字走小窗问答，回答显示在 HUD 小框；未配置 key 时显示「尚未配置…」+「→ 点击前往设置」+「推荐 DeepSeek V4 Flash」三行提示，点击直达设置。
 - **CompassHud（HUD）**：常驻悬浮球 + 小框，不拦截玩家操作；容器界面之上也叠加绘制；内容区字号 / 背景透明度可调；未配置 / 思考中 / 有回答三态动态切换。
 - **ConfigScreen（设置）**：选厂商自动填地址模型、填 Key（遮罩）、作弊开关（仅 OP 可见）、布局编辑入口。
@@ -126,7 +140,7 @@ Compass 的系统提示词针对 SSC/SSCA 做了深度定制，关键规则：
 
 普通构建直接使用仓库内快照，不再依赖旁边的 `ssca_wiki`。`tools/refresh_knowledge.py --help` 给出重新生成所需的本地来源参数，`--check` 检查快照漂移；`manifest.json` 记录来源 commit 与 SHA-256。详细 Wiki 文档遵循其 CC-BY-NC-SA-4.0 许可，见 [THIRD_PARTY.md](THIRD_PARTY.md)。
 
-执行 `gradlew.bat --offline --no-daemon --gradle-user-home C:\Users\ASUS\.gradle check build` 可运行回归并打包。双版本的真实 JAR 接口检查脚本为 `tools/check_ssc_api.py`。这些检查不代替实际进服、变形与重连验收，详见 [本次核对记录](docs/compatibility-and-knowledge-2026-10-15.md)。
+在 Java 17 环境执行 `gradlew.bat --no-daemon check build` 可运行回归并打包；Linux/macOS 使用 `./gradlew --no-daemon check build`。双版本的真实 JAR 接口检查脚本为 `tools/check_ssc_api.py`。这些检查不代替实际进服、变形与重连验收，详见 [本次核对记录](docs/compatibility-and-knowledge-2026-10-15.md)。
 
 ---
 

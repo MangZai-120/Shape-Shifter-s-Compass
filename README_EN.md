@@ -4,7 +4,7 @@
 
 ### In-Game AI Assistant · Built for Shape Shifter's Curse (SSC) & Addon (SSCA)
 
-Fabric 1.20.1 · Client-side Mod · OpenAI-Compatible API · `1.0.0`
+Fabric 1.20.1 · Client-side Mod · OpenAI-Compatible API · `1.1.4`
 
 </div>
 
@@ -21,10 +21,10 @@ Fabric 1.20.1 · Client-side Mod · OpenAI-Compatible API · `1.0.0`
 ## Core Features
 
 - 🧭 **HUD Floating Ball + Small Window**: Always on screen without blocking gameplay; press **K** to bring up the interactive window, click the "▢" in the title bar to expand the full window.
-- 🛠️ **15 Built-in Tools**: The AI can read your game state, get precise food values, search the knowledge base, perform web search, and (with cheats) execute commands — **reads only your own data; cheat tools are server-side permission enforced**.
+- 🛠️ **20 Built-in Tools**: The AI can read your game state, get precise food values, search the knowledge base, perform web search, and (with cheats) execute commands — **reads only your own data; cheat tools are server-side permission enforced**.
 - 🍗 **AppleSkin-Style Food Values**: `get_food_info` / `get_inventory` / `get_equipment` all include a food's hunger value, saturation restore (`hunger × saturation coefficient × 2`), whether it's edible right now, and status effects; with Apoli installed, the current form's `modify_food` modifier is applied.
 - 📚 **SSC/SSCA Knowledge Base**: Built-in entries for forms, evolution, mechanics, and commands (`knowledge/core/`); extend by simply dropping `.md` files into the directory.
-- 💬 **WeChat-Style Bubble Window**: Local typewriter effect, scrollbar, session list, click your own message to inline-edit and regenerate, ↑↓ history navigation.
+- 💬 **WeChat-Style Bubble Window**: Local typewriter effect, scrollbar, session list, ↑↓ history navigation.
 - 🔒 **Anti-Jailbreak Identity**: The system prompt locks the Compass role — no matter what the player says, it won't break character.
 - ⚙️ **Multi-Vendor Presets**: OpenAI / z.ai GLM / DeepSeek / Moonshot / OpenRouter / OpenCode Zen / Custom, one-click switching (**DeepSeek V4 Flash recommended**).
 - 🎨 **Visual Layout Editor**: Drag the floating ball anywhere on screen; fine-tune font / opacity / width / height with sliders.
@@ -41,6 +41,16 @@ Fabric 1.20.1 · Client-side Mod · OpenAI-Compatible API · `1.0.0`
 The default hotkey is **K** (`key.ssc_compass.open`, rebindable in Controls). If K is intercepted while a container screen (inventory / crafting table) is open, a physical key edge-detection fallback brings up the window overlaid on the original screen.
 
 ---
+
+## Chat interface in 1.1.4
+
+Historical-message editing and regeneration, the local search/tools page, its buttons, and the dedicated Shift+K entry have been removed. K and Shift+K both open chat. The assistant continues to query game state and knowledge through its internal tools.
+
+1.1.1 fixes DSML tool-call decoding and preserves actual tool outcomes when the model returns no final text. `add_spellbook_experience` explicitly targets the equipped or held book and requires cheat mode plus OP2. Equipped support requires the matching updated SSCA server build; older servers receive a clear unsupported message. See [the version notes](docs/changes-1.1.md).
+
+1.1.2 explicitly sends DeepSeek thinking settings, handles empty token-limit responses with one bounded non-thinking recovery, and defaults new configurations to 8192 output tokens. See [the version notes](docs/changes-1.1.md).
+
+1.1.3 executes recognized explicit Chinese spellbook EXP requests locally, selects the currently equipped or held book, and returns server feedback without an AI request. Cheat mode and OP2 remain required. Main-hand reporting and recovery after read-only queries are corrected. See [the version notes](docs/changes-1.1.md).
 
 ## Built-in Tools
 
@@ -63,6 +73,7 @@ The AI auto-invokes the following tools as needed (function calling). **Read-onl
 | `locate_structure` | 🔒Cheat · Async | Locate the nearest structure or biome |
 | `run_command` | 🔒Cheat · Async | Execute Minecraft commands on the whitelist (dangerous commands like op/stop/ban are always rejected) |
 | `set_player_data` | 🔒Cheat · Async | Modify max health / full heal / full hunger / set XP level |
+| `add_spellbook_experience` | 🔒Cheat · Async | Add experience to the equipped or held Moon Dust Spellbook through a supported server command |
 
 > Command feedback from cheat tools is suppressed by `ChatHudMixin` — **written only to the backend log, not shown in the player's chat**; the `/locate` coordinate feedback is first parsed by `LocateTool` before being swallowed.
 
@@ -72,7 +83,7 @@ The AI auto-invokes the following tools as needed (function calling). **Read-onl
 
 Config file: `config/ssc_compass.json`, or press **⚙** in-game to open the ConfigScreen for visual editing (apiKey is masked with `*` while rendering; the cheat toggle is visible to OP only).
 
-**AI Connection:** `provider` / `baseUrl` / `apiKey` / `model` / `temperature`(0.7) / `maxTokens`(1024) / `maxHistory`(20)
+**AI Connection:** `provider` / `baseUrl` / `apiKey` / `model` / `temperature`(0.7) / `maxTokens`(8192) / `maxHistory`(20)
 
 **HUD Layout:** `hudBallX/Y`(-1 = right side/center by default) / `hudBoxX/Y`(4,4) / `hudBoxWidth`(160) / `hudBoxHeight`(112) / `hudVisible`(true) / `hudBgAlpha`(128) / `hudFontPct`(75) / `chatFontPct`(100)
 
@@ -97,7 +108,7 @@ Any **OpenAI-compatible** endpoint can be connected (just fill in `baseUrl` + `a
 
 ## UI Overview
 
-- **ChatScreen (Full Window)**: Left-side session list (create/switch/delete, hover to see token & byte usage), right-side bubble conversation (your messages blue-right, AI gray-green-left), typewriter, scrollbar, **click your own message to inline-edit → truncate subsequent conversation and regenerate**, ↑↓ history navigation, compact/expand toggle.
+- **ChatScreen (Full Window)**: Left-side session list (create/switch/delete, hover to see token & byte usage), right-side bubble conversation (your messages blue-right, AI gray-green-left), typewriter, scrollbar, ↑↓ history navigation, compact/expand toggle.
 - **CompassOverlayScreen (Small Window)**: Opened with K, semi-transparent, mouse visible, doesn't block the full screen; type directly for Q&A with answers shown in the HUD box; when no key is configured, shows three lines — "Not yet configured..." + "→ Click to go to settings" + "DeepSeek V4 Flash recommended" — clicking goes straight to settings.
 - **CompassHud (HUD)**: Persistent floating ball + small box, doesn't intercept player actions; also drawn on top of container screens; content font size / background opacity adjustable; three dynamic states — not configured / thinking / has answer.
 - **ConfigScreen (Settings)**: Choosing a vendor auto-fills address and model, enter Key (masked), cheat toggle (visible to OP only), layout editor entry.

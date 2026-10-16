@@ -10,6 +10,12 @@
 此命令只加经验，不代替注魔台升级，不直接设等级、不补法力。法术施放经验和书等级是另一套机制。
 来源：command/SscAddonCommands.java:addSpellbookExp、spell/SpellbookData.java。
 
+## 给佩戴的月尘魔法书增加经验 equipped
+2026-10-16 修复后的两个 SSCA 分支新增 /ssc_addon moon_dust_spellbook exp addon <正整数> equipped，例如 /ssc_addon moon_dust_spellbook exp addon 1000 equipped。需要 OP 2，只修改执行者饰品栏中施法所用的佩戴书；即使主副手有另外的书也不会修改它们。没有佩戴时直接拒绝，不回退手持。
+Compass 对没有明确位置的“给我身上的书加1000点经验”优先使用 add_spellbook_experience(amount=1000,target=auto)，按本次实时状态优先佩戴书、其次主副手书；明确佩戴用equipped、明确手持用held。常见明确请求在1.1.3起直接走本地操作，不消耗AI token。背包或未选中的快捷栏里有书，不等于已经手持。
+工具会先检查当前服务器下发的指令树。相同版本号的旧开发构建不一定支持 equipped；只有当前指令树缺少入口才能说明需要更新服务端，不能把某次没有佩戴、没有手持或历史错误回答当成“不支持”的证据。只增加经验，不直接升级、不补法力；经验溢出拒绝且不迁移或修改原书 NBT。超时表示结果未确认，禁止自动重复发放。
+来源：修复后的 command/SscAddonCommands.java、command/SpellbookExperience.java；是否可用以当前服务器指令树为准。
+
 ## 法术冷却重置 moon_dust_spellbook cd reset 与旧命令
 /ssc_addon moon_dust_spellbook cd reset [目标玩家]，省略目标时作用于执行玩家；控制台必须指定目标。需要 OP 2。
 旧命令 /ssc_addon reset_spell_cd [目标玩家] 仍可用。它们清除目标的服务端共享法术冷却、所佩戴书内卷轴的冷却 NBT 和施法公共间隔。不强制中断正在进行的施法，也不清除所有形态技能冷却。

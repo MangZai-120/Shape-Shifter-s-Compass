@@ -4,6 +4,7 @@ package com.mangzai.shapeshiftercompass.ai;
 public class ChatMessage {
     public String role;
     public String content;
+    public java.util.List<Evidence> evidence;
 
     public ChatMessage(String role, String content) {
         this.role = role;

@@ -55,5 +55,7 @@
   "ssc_compass.set.show_box": "Show box",
   "ssc_compass.overlay.empty": "How can Compass help you?",
   "ssc_compass.overlay.close": "Close",
-  "ssc_compass.overlay.no_ssc": "Shape Shifter's Curse mod is not loaded"
+  "ssc_compass.overlay.no_ssc": "Shape Shifter's Curse mod is not loaded",
+  "ssc_compass.chat.evidence": "Sources",
+  "ssc_compass.chat.no_evidence": "No query evidence was saved for this answer."
 }

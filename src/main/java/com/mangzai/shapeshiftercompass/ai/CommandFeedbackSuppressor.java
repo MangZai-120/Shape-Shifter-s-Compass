@@ -25,6 +25,7 @@ public final class CommandFeedbackSuppressor {
     private static volatile String lastCmdHead = "";
     /** 命令结果追踪：窗口内第一条反馈会 complete 它，供工具判定命令成败。null 表示当前不追踪结果。 */
     private static volatile CompletableFuture<String> pendingResult;
+    private static volatile java.util.function.Predicate<Text> pendingFilter;
 
     private CommandFeedbackSuppressor() {}
 
@@ -34,6 +35,7 @@ public final class CommandFeedbackSuppressor {
         long timeout = "locate".equals(lastCmdHead) ? LOCATE_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
         suppressUntil = System.currentTimeMillis() + timeout;
         pendingResult = null; // 普通抑制不追踪结果
+        pendingFilter = null;
     }
 
     /**
@@ -45,6 +47,17 @@ public final class CommandFeedbackSuppressor {
         CompletableFuture<String> f = new CompletableFuture<>();
         pendingResult = f;
         return f;
+    }
+
+    public static CompletableFuture<String> awaitSpellbookFeedback() {
+        CompletableFuture<String> future = startSuppressionAndAwait("ssc_addon");
+        pendingFilter = message -> {
+            String text = message == null ? "" : message.getString();
+            return text.contains("月尘魔法书") || text.toLowerCase(java.util.Locale.ROOT).contains("moon dust spellbook")
+                    || text.contains("经验数值过大") || text.toLowerCase(java.util.Locale.ROOT).contains("experience amount is too large")
+                    || isFailureFeedback(text);
+        };
+        return future;
     }
 
     /**
@@ -66,6 +79,12 @@ public final class CommandFeedbackSuppressor {
                 || s.contains("that player does not exist")
                 || s.contains("no targets matched")
                 || s.contains("cannot")
+                || s.contains("hold a moon dust spellbook")
+                || s.contains("equip a moon dust spellbook")
+                || s.contains("experience amount is too large")
+                || feedback.contains("请先在主手或副手")
+                || feedback.contains("请先佩戴月尘魔法书")
+                || feedback.contains("经验数值过大")
                 || feedback.contains("未知")
                 || feedback.contains("无效")
                 || feedback.contains("找不到")
@@ -77,6 +96,8 @@ public final class CommandFeedbackSuppressor {
     /** 立即关闭抑制窗口（命令链结束）。 */
     public static void endSuppression() {
         suppressUntil = 0L;
+        pendingResult = null;
+        pendingFilter = null;
     }
 
     /** 当前是否处于抑制窗口内。 */
@@ -92,6 +113,8 @@ public final class CommandFeedbackSuppressor {
         if (!isSuppressing()) {
             return false;
         }
+        var filter = pendingFilter;
+        if (filter != null && !filter.test(message)) return false;
         // 窗口内的消息一律视为命令反馈予以抑制；空消息也一并吞掉。
         String content;
         try {

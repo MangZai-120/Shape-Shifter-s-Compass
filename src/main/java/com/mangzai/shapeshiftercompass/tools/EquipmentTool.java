@@ -16,7 +16,7 @@ public class EquipmentTool implements CompassTool {
 
     @Override
     public String description() {
-        return "获取玩家当前穿戴的装备：头盔、胸甲、护腿、靴子，以及副手物品。";
+        return "获取玩家当前主手和副手物品、选中的快捷栏槽，以及头盔、胸甲、护腿、靴子。背包里有书不代表当前手持。";
     }
 
     @Override
@@ -49,6 +49,8 @@ public class EquipmentTool implements CompassTool {
         }
         // 主手食物也一并报告（玩家常把食物拿在手里准备吃）
         ItemStack mainHand = mc.player.getMainHandStack();
+        sb.append("\n主手: ").append(mainHand.isEmpty() ? "无" : mainHand.getName().getString() + " x" + mainHand.getCount())
+                .append("（当前选中快捷栏").append(inv.selectedSlot+1).append("）");
         String mainFood = FoodInfo.describeIfFood(mainHand, mc.player);
         if (!mainFood.isEmpty()) {
             sb.append("\n主手").append(mainFood);

@@ -51,8 +51,9 @@ public class RecipeQueryTool implements CompassTool {
             return "玩家当前不在游戏世界中。";
         }
 
-        Item target = resolveItem(q);
-        if (target == null) {
+        ItemStack targetStack = ItemQuery.resolve(q);
+        Item target = targetStack.getItem();
+        if (targetStack.isEmpty()) {
             return "找不到物品：" + q + "（请尝试用物品 ID，如 minecraft:chest）。";
         }
 
@@ -66,7 +67,7 @@ public class RecipeQueryTool implements CompassTool {
             } catch (Exception e) {
                 continue;
             }
-            if (out.isEmpty() || out.getItem() != target) {
+            if (out.isEmpty() || out.getItem() != target || (targetStack.hasNbt() && !ItemStack.canCombine(out,targetStack))) {
                 continue;
             }
             found++;
@@ -75,7 +76,8 @@ public class RecipeQueryTool implements CompassTool {
                     .append("（类型 ").append(r.getClass().getSimpleName()).append("）\n材料: ");
             for (Ingredient ing : r.getIngredients()) {
                 ItemStack[] ms = ing.getMatchingStacks();
-                sb.append('[').append(ms.length == 0 ? "空" : ms[0].getName().getString()).append("] ");
+                sb.append('[').append(ms.length == 0 ? "空" : java.util.Arrays.stream(ms).limit(6)
+                        .map(s -> s.getName().getString()).distinct().collect(java.util.stream.Collectors.joining(" / "))).append("] ");
             }
             sb.append('\n');
             if (found >= 5) {
@@ -87,7 +89,7 @@ public class RecipeQueryTool implements CompassTool {
                 : sb.toString();
     }
 
-    private static Item resolveItem(String q) {
+    public static Item resolveItem(String q) {
         Identifier id = Identifier.tryParse(q);
         if (id != null && Registries.ITEM.containsId(id)) {
             return Registries.ITEM.get(id);

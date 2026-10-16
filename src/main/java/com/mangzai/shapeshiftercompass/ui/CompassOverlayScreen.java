@@ -84,11 +84,12 @@ public class CompassOverlayScreen extends Screen {
     }
 
     private void onSend() {
-        if (waiting) {
+        if (waiting || com.mangzai.shapeshiftercompass.ai.CompassState.isBusy()) {
             return;
         }
         // 未配置 API key：不记录消息、不进入等待，小框持续显示「尚未配置…」提示
-        if (!CompassConfig.get().hasKey()) {
+        if (!CompassConfig.get().hasKey()
+                && com.mangzai.shapeshiftercompass.ai.LocalActionRouter.parse(input.getText()) == null) {
             return;
         }
         String t = input.getText().trim();
@@ -104,7 +105,7 @@ public class CompassOverlayScreen extends Screen {
         ConversationStore.save();
         AiClient.sendChat(new ArrayList<>(c.messages),
                 reply -> {
-                    c.messages.add(new ChatMessage("assistant", reply));
+                    c.messages.add(AiClient.answerMessage(reply));
                     CompassHud.setLastAnswer(reply);
                     waiting = false;
                     ConversationStore.save();

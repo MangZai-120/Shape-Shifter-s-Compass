@@ -21,8 +21,38 @@ bin/
 
 # Fabric / Minecraft 运行目录
 run/
+logs/
 .source-cache/
 __pycache__/
+
+# Local investigation notes, instance backups and delivery packages
+/.local-only/
+/output/
+/tmp/
+compass-backups/
+
+# Credentials and private player data (including copied backup files)
+.env
+.env.*
+!.env.example
+!.env.*.example
+ssc_compass.json
+ssc_compass.json.*
+ssc_compass_memory.json
+ssc_compass_memory.json.*
+conversations.json
+conversations.json.*
+system_prompt.txt
+system_prompt.txt.*
+/config/
+
+# Other Minecraft runtime files
+/saves/
+/world/
+/mods/
+crash-reports/
+*.log
+*.jfr
 
 # 系统
 .DS_Store

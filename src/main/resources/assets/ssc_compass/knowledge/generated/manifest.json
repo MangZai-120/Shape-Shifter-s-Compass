@@ -1408,7 +1408,7 @@
       "data/ssc_addon/spells/void_devour.json": "2b1d540f9d0869ac4672b03b3fa61e87ef005b597fce9559221e9587b2a2c0e1",
       "data/ssc_addon/spells/void_erosion.json": "1bf22d64b41a1eca25030e2f261f6205fe33190f48d531ecd5af1634c2fff909",
       "assets/ssc_addon/lang/zh_cn.json": "24debe4d3c5a1ef922539416d1b9b65676526f632f5790008153d5a2292ffbe8",
-      "assets/my_addon/lang/zh_cn.json": "b23119a658019246211803859f427c7cfab766bb6cf18d6e92ddfd2f3775e379",
+      "assets/my_addon/lang/zh_cn.json": "f75433e8ddba51031251c2bdbe87b8f7fcaa560c6075c4b718066eb24cab535b",
       "src/main/java/net/jackcooper/shapeShifterCurseAddon/util/FormIdentifiers.java": "80eebf146dc9080d5e2587b35d845b1fc83f9301d58f38903c7e621a0ed4b8aa",
       "src/main/java/net/jackcooper/shapeShifterCurseAddon/SpUpgradeItem.java": "5764fc172690ef6517867ff76e5df60270c7d5c8a314533141c13afe0e481391",
       "src/main/java/net/jackcooper/shapeShifterCurseAddon/EvolutionStoneItem.java": "aaae58060ec41026535416f8acad0a61ff1a2f307fae340df9d8f50a50c292b2"
@@ -1779,7 +1779,7 @@
       "data/ssc_addon/spells/void_devour.json": "2b1d540f9d0869ac4672b03b3fa61e87ef005b597fce9559221e9587b2a2c0e1",
       "data/ssc_addon/spells/void_erosion.json": "1bf22d64b41a1eca25030e2f261f6205fe33190f48d531ecd5af1634c2fff909",
       "assets/ssc_addon/lang/zh_cn.json": "24debe4d3c5a1ef922539416d1b9b65676526f632f5790008153d5a2292ffbe8",
-      "assets/my_addon/lang/zh_cn.json": "3e85358082f70150a3977201dc4070d647bd7cc55eecdb4bff81003fcd2f0cbe",
+      "assets/my_addon/lang/zh_cn.json": "f75433e8ddba51031251c2bdbe87b8f7fcaa560c6075c4b718066eb24cab535b",
       "src/main/java/net/jackcooper/shapeShifterCurseAddon/util/FormIdentifiers.java": "80eebf146dc9080d5e2587b35d845b1fc83f9301d58f38903c7e621a0ed4b8aa",
       "src/main/java/net/jackcooper/shapeShifterCurseAddon/SpUpgradeItem.java": "d95e364013b559144e624de01340435ff283065f8a988fd4bcd90c806663ef31",
       "src/main/java/net/jackcooper/shapeShifterCurseAddon/EvolutionStoneItem.java": "7700db955241eb2242e9f2f196e0585efaf80c6fdfc2eddcc1564445b8436ddc"

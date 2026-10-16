@@ -53,5 +53,7 @@
   "ssc_compass.set.show_box": "显示小框",
   "ssc_compass.overlay.empty": "有什么可以让 Compass 帮到你的？",
   "ssc_compass.overlay.close": "关闭",
-  "ssc_compass.overlay.no_ssc": "您未加载幻形者诅咒模组"
+  "ssc_compass.overlay.no_ssc": "您未加载幻形者诅咒模组",
+  "ssc_compass.chat.evidence": "依据",
+  "ssc_compass.chat.no_evidence": "此回答没有保存可展开的查询依据。"
 }

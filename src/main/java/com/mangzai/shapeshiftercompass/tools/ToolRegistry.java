@@ -48,7 +48,9 @@ public final class ToolRegistry {
             return "错误：未知工具 " + name;
         }
         try {
-            return t.execute(args);
+            String result = t.execute(args);
+            return result == null || result.isBlank()
+                    ? "工具未返回结果，执行状态未确认；不要自动重复执行修改数据的操作。" : result;
         } catch (Exception e) {
             ShapeShifterCompass.LOGGER.error("Tool '{}' execute failed", name, e);
             return "错误：工具执行失败 - " + e.getMessage();
