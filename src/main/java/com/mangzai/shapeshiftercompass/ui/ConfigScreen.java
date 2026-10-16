@@ -13,7 +13,7 @@ import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 
 /** 窗口内配置界面：选择厂商（自动填 baseUrl/model）、填 baseUrl/apiKey/model，保存到本地。无需 ModMenu�?*/
-public class ConfigScreen extends Screen {
+public class ConfigScreen extends CompassScreen {
     private final Screen parent;
     private TextFieldWidget baseUrlField;
     private TextFieldWidget apiKeyField;

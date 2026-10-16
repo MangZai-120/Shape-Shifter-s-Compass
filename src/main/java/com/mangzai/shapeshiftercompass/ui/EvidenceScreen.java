@@ -8,7 +8,7 @@ import net.minecraft.text.Text;
 import java.util.*;
 
 /** Expandable local source cards. Opening or scrolling never calls an AI API. */
-public final class EvidenceScreen extends Screen {
+public final class EvidenceScreen extends CompassScreen {
     private final Screen parent;
     private final List<Evidence> evidence;
     private final Set<Integer> expanded=new HashSet<>();

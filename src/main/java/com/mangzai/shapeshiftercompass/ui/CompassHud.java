@@ -4,9 +4,13 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import net.minecraft.client.util.math.Rect2i;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -53,7 +57,7 @@ public final class CompassHud {
     public static void register() {
         HudRenderCallback.EVENT.register((ctx, tickDelta) -> {
             MinecraftClient mc = MinecraftClient.getInstance();
-            if (mc.player == null || mc.options.hudHidden) {
+            if (mc.player == null || mc.options.hudHidden || mc.currentScreen instanceof HandledScreen<?>) {
                 return;
             }
             renderOverlay(ctx, ctx.getScaledWindowWidth(), ctx.getScaledWindowHeight(), true);
@@ -248,6 +252,32 @@ public final class CompassHud {
         x = Math.max(2, Math.min(Math.max(2, sw - boxW - 2), x));
         y = Math.max(2, Math.min(Math.max(2, sh - boxH - 2), y));
         return new int[]{x, y};
+    }
+
+    /** Shared by optional viewers; uses the same scaled coordinates and visibility as rendering. */
+    public static List<Rect2i> exclusionAreas(Screen screen, boolean hudHidden) {
+        boolean interactive = screen instanceof CompassOverlayScreen;
+        if (!(screen instanceof HandledScreen<?>) && !interactive) return List.of();
+        if (screen.width <= 0 || screen.height <= 0) return List.of();
+        var areas = new ArrayList<Rect2i>(2);
+        if (!hudHidden) {
+            addClippedArea(areas, screen.width, screen.height,
+                    ballX(screen.width), ballY(screen.height), BALL, BALL);
+        }
+        var cfg = com.mangzai.shapeshiftercompass.config.CompassConfig.get();
+        if (interactive || (!hudHidden && cfg.hudVisible && boxOpen)) {
+            int[] pos = computeBoxPos(screen.width, screen.height, cfg.hudBoxWidth, cfg.hudBoxHeight);
+            addClippedArea(areas, screen.width, screen.height,
+                    pos[0], pos[1], cfg.hudBoxWidth, cfg.hudBoxHeight);
+        }
+        return areas;
+    }
+
+    private static void addClippedArea(List<Rect2i> areas, int sw, int sh, int x, int y, int w, int h) {
+        // Leave space around borders, but never give viewers off-screen/negative rectangles.
+        int left = Math.max(0, x - 2), top = Math.max(0, y - 2);
+        int right = Math.min(sw, x + w + 2), bottom = Math.min(sh, y + h + 2);
+        if (right > left && bottom > top) areas.add(new Rect2i(left, top, right - left, bottom - top));
     }
 
     /** 绘制小窗主体（标题栏含放大/关闭图标 + 回答内容）；interactive=true 底部留输入框空间。 */

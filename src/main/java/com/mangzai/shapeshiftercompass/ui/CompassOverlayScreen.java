@@ -17,7 +17,7 @@ import java.util.ArrayList;
  * 交互模式（快捷键 K 唤出）：半透明、鼠标可见，不整屏遮挡。
  * 点悬浮球 → 展开大窗（完整 ChatScreen）；直接打字 → 小窗问答（回答显示在 HUD 小框）。
  */
-public class CompassOverlayScreen extends Screen {
+public class CompassOverlayScreen extends CompassScreen {
     private final Screen parent;
     private TextFieldWidget input;
     private boolean waiting = false;
@@ -243,7 +243,6 @@ public class CompassOverlayScreen extends Screen {
                 parent.render(ctx, -1, -1, delta);
             } catch (Exception ignored) {
             }
-            ctx.fill(0, 0, this.width, this.height, 0x40000000);
         }
         CompassConfig cfg = CompassConfig.get();
         // 计算 hover 状态：放大/关闭图标区域

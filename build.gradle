@@ -19,6 +19,8 @@ loom {
 repositories {
     maven { url "https://maven.fabricmc.net/" }
     mavenCentral()
+    maven { url "https://maven.blamejared.com/" }
+    maven { url "https://maven.shedaniel.me/" }
 }
 
 dependencies {
@@ -26,6 +28,11 @@ dependencies {
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // Optional viewer APIs: only GUI exclusion zones, never bundled or required at runtime.
+    modCompileOnly("mezz.jei:jei-1.21.1-common-api-intermediary:19.21.0.247") { transitive = false }
+    modCompileOnly("me.shedaniel:RoughlyEnoughItems-api-fabric:16.0.799") { transitive = false }
+    compileOnly "me.shedaniel.cloth:basic-math:0.6.1"
 }
 
 processResources {

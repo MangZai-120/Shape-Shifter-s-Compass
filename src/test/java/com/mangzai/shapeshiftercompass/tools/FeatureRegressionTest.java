@@ -115,6 +115,90 @@ public final class FeatureRegressionTest {
                 "1.21 recipe entries retain recipe IDs and registry-aware outputs");
         check(read.value().getIngredients().size()==4,"recipe entry ingredients remain readable");
     }
+    private static void screenBlur() throws Exception {
+        var overlay = new com.mangzai.shapeshiftercompass.ui.CompassOverlayScreen(null);
+        net.minecraft.client.gui.screen.Screen vanilla = new net.minecraft.client.gui.screen.Screen(net.minecraft.text.Text.literal("ordinary menu")) {};
+        check(!com.mangzai.shapeshiftercompass.ui.CompassScreen.keepsWorldVisible(vanilla,vanilla),
+                "ordinary menus retain vanilla blur");
+        check(!com.mangzai.shapeshiftercompass.ui.CompassScreen.keepsWorldVisible(vanilla,null),
+                "no Compass context does not suppress blur");
+        check(com.mangzai.shapeshiftercompass.ui.CompassScreen.keepsWorldVisible(vanilla,overlay),
+                "container background blur is suppressed while Compass is active");
+        check(!com.mangzai.shapeshiftercompass.ui.CompassScreen.keepsWorldVisible(null,vanilla),
+                "ordinary active screens do not suppress blur");
+        var applyBlur = net.minecraft.client.gui.screen.Screen.class.getDeclaredMethod("applyBlur",float.class);
+        applyBlur.setAccessible(true);
+        var gradient = net.minecraft.client.gui.screen.Screen.class.getMethod("renderInGameBackground",net.minecraft.client.gui.DrawContext.class);
+        var screens = List.of(overlay,
+                new com.mangzai.shapeshiftercompass.ui.ChatScreen(null),
+                new com.mangzai.shapeshiftercompass.ui.ConfigScreen(null),
+                new com.mangzai.shapeshiftercompass.ui.CompassEditorScreen(null),
+                new com.mangzai.shapeshiftercompass.ui.EvidenceScreen(null,List.of()));
+        for (var screen:screens) {
+            // Vanilla would access an absent renderer here; the actual injected method must skip it.
+            applyBlur.invoke(screen,0f);
+            check(true,"actual Screen blur injection skips rendering for "+screen.getClass().getSimpleName());
+            screen.renderBackground(null,0,0,0f);
+            check(true,"Compass background pass needs no renderer or full-screen shading: "+screen.getClass().getSimpleName());
+            gradient.invoke(screen,(Object)null);
+            check(true,"actual container gradient injection skips dimming for "+screen.getClass().getSimpleName());
+        }
+    }
+
+    private static void viewerExclusions() {
+        var cfg = com.mangzai.shapeshiftercompass.config.CompassConfig.get();
+        int oldX=cfg.hudBallX, oldY=cfg.hudBallY, oldW=cfg.hudBoxWidth, oldH=cfg.hudBoxHeight;
+        boolean oldVisible=cfg.hudVisible, oldOpen=com.mangzai.shapeshiftercompass.ui.CompassHud.isBoxOpen();
+        var inventory = new net.minecraft.entity.player.PlayerInventory(null);
+        var container = new net.minecraft.client.gui.screen.ingame.HandledScreen<net.minecraft.screen.ScreenHandler>(
+                null, inventory, net.minecraft.text.Text.literal("test container")) {
+            @Override protected void drawBackground(net.minecraft.client.gui.DrawContext context, float delta, int mx, int my) {}
+        };
+        var overlay = new com.mangzai.shapeshiftercompass.ui.CompassOverlayScreen(container);
+        container.width=overlay.width=854; container.height=overlay.height=480;
+        try {
+            cfg.hudBallX=cfg.hudBallY=-1; cfg.hudBoxWidth=160; cfg.hudBoxHeight=112; cfg.hudVisible=true;
+            com.mangzai.shapeshiftercompass.ui.CompassHud.setBoxOpen(false);
+            var ball=com.mangzai.shapeshiftercompass.ui.CompassHud.exclusionAreas(container,false);
+            check(ball.size()==1 && ball.getFirst().getX()==832 && ball.getFirst().getY()==238
+                    && ball.getFirst().getWidth()==18 && ball.getFirst().getHeight()==18,
+                    "closed HUD reserves the actual default ball with a two-pixel border");
+            com.mangzai.shapeshiftercompass.ui.CompassHud.setBoxOpen(true);
+            var open=com.mangzai.shapeshiftercompass.ui.CompassHud.exclusionAreas(container,false);
+            check(open.size()==2 && open.get(1).getX()==686 && open.get(1).getY()==126
+                    && open.get(1).getWidth()==164 && open.get(1).getHeight()==116,
+                    "open HUD reserves the answer panel in scaled screen coordinates");
+            check(com.mangzai.shapeshiftercompass.ui.CompassHud.exclusionAreas(container,true).isEmpty(),
+                    "hidden inventory HUD leaves no phantom exclusion zones");
+            cfg.hudVisible=false;
+            check(com.mangzai.shapeshiftercompass.ui.CompassHud.exclusionAreas(container,false).size()==1,
+                    "disabled answer panel still reserves its visible ball");
+            check(com.mangzai.shapeshiftercompass.ui.CompassHud.exclusionAreas(overlay,false).size()==2,
+                    "interactive panel reserves space even when passive answers are disabled");
+            check(com.mangzai.shapeshiftercompass.ui.CompassHud.exclusionAreas(overlay,true).size()==1,
+                    "interactive panel remains visible with the normal HUD hidden");
+            var unrelated=new net.minecraft.client.gui.screen.Screen(net.minecraft.text.Text.literal("other")) {};
+            unrelated.width=854; unrelated.height=480;
+            check(com.mangzai.shapeshiftercompass.ui.CompassHud.exclusionAreas(unrelated,false).isEmpty(),
+                    "unrelated viewer screens do not inherit inventory exclusions");
+            cfg.hudVisible=true;
+            for (int[] size:new int[][]{{320,180},{854,480},{8,8}}) {
+                container.width=size[0]; container.height=size[1];
+                for (int[] pos:new int[][]{{-1,-1},{0,0},{size[0],size[1]},{size[0]/2,size[1]/2}}) {
+                    cfg.hudBallX=pos[0]; cfg.hudBallY=pos[1];
+                    var areas=com.mangzai.shapeshiftercompass.ui.CompassHud.exclusionAreas(container,false);
+                    check(!areas.isEmpty() && areas.stream().allMatch(a -> a.getX()>=0 && a.getY()>=0
+                            && a.getWidth()>0 && a.getHeight()>0 && a.getX()+a.getWidth()<=size[0]
+                            && a.getY()+a.getHeight()<=size[1]),
+                            "moved/resized HUD exclusions stay inside the viewport: "+Arrays.toString(size)+Arrays.toString(pos));
+                }
+            }
+        } finally {
+            cfg.hudBallX=oldX; cfg.hudBallY=oldY; cfg.hudBoxWidth=oldW; cfg.hudBoxHeight=oldH; cfg.hudVisible=oldVisible;
+            com.mangzai.shapeshiftercompass.ui.CompassHud.setBoxOpen(oldOpen);
+        }
+    }
+
     public static void main(String[] args) throws Exception {
         System.setProperty("java.class.path",java.nio.file.Files.readString(java.nio.file.Path.of(System.getProperty("compass.testClasspath"))));
         var knot=new net.fabricmc.loader.impl.launch.knot.Knot(net.fabricmc.api.EnvType.CLIENT);
@@ -143,9 +227,18 @@ public final class FeatureRegressionTest {
             for (String screen:List.of("ChatScreen","CompassOverlayScreen","ConfigScreen","CompassEditorScreen","EvidenceScreen"))
                 Class.forName("com.mangzai.shapeshiftercompass.ui."+screen,false,Probe.class.getClassLoader());
             check(true,"chat feedback mixin and all Compass screens load against Minecraft 1.21.1");
+            screenBlur(); viewerExclusions();
             var mod=net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("ssc_compass").orElseThrow();
             var metadata=com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(mod.findPath("fabric.mod.json").orElseThrow())).getAsJsonObject();
-            check(!metadata.getAsJsonObject("entrypoints").has("jei_mod_plugin"),"removed local viewer buttons do not leave a JEI entrypoint");
+            var entrypoints=metadata.getAsJsonObject("entrypoints");
+            check(entrypoints.getAsJsonArray("jei_mod_plugin").size()==1
+                    && entrypoints.getAsJsonArray("jei_mod_plugin").get(0).getAsString().endsWith("compat.CompassJeiPlugin"),
+                    "JEI entrypoint only supplies optional HUD exclusion zones");
+            check(entrypoints.getAsJsonArray("rei_client").size()==1
+                    && entrypoints.getAsJsonArray("rei_client").get(0).getAsString().endsWith("compat.CompassReiPlugin"),
+                    "REI entrypoint supplies optional HUD exclusion zones");
+            check(!metadata.getAsJsonObject("depends").has("jei") && !metadata.getAsJsonObject("depends").has("roughlyenoughitems"),
+                    "neither recipe viewer becomes a required runtime dependency");
             System.out.println("Compass feature regression PASS: "+checks+" checks; exhaustive allocation oracle, evidence migration, real item/NBT bootstrap and accessor transformation. No game window/world or AI API started.");
         }
     }

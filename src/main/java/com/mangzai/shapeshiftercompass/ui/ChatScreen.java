@@ -19,7 +19,7 @@ import java.util.List;
  * Phase 1 第⑤步聊天界面：微信式气泡（自己右侧蓝、AI 左侧灰绿）、本地打字机效果、
  * 滚动条、会话占用 tooltip；左侧会话列表可新建/切换/删除，消息支持复制。
  */
-public class ChatScreen extends Screen {
+public class ChatScreen extends CompassScreen {
     private final Screen parent;
     private boolean compact;
     private TextFieldWidget input;

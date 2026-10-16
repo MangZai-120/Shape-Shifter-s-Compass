@@ -5,7 +5,8 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "HandledScreenAccessor",
-    "ChatHudMixin"
+    "ChatHudMixin",
+    "ScreenBlurMixin"
   ],
   "injectors": {
     "defaultRequire": 1

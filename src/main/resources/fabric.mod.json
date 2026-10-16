@@ -18,6 +18,12 @@
   "entrypoints": {
     "client": [
       "com.mangzai.shapeshiftercompass.ShapeShifterCompass"
+    ],
+    "jei_mod_plugin": [
+      "com.mangzai.shapeshiftercompass.compat.CompassJeiPlugin"
+    ],
+    "rei_client": [
+      "com.mangzai.shapeshiftercompass.compat.CompassReiPlugin"
     ]
   },
   "mixins": [

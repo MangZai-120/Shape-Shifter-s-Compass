@@ -10,7 +10,7 @@ import net.minecraft.text.Text;
  * 可视化布局编辑器：拖动悬浮球与 AI 小框到屏幕任意位置（全屏可放，不吸附）。
  * 保存写入 config；小框大小/透明/字体/显示开关等设置项也在本界面。
  */
-public class CompassEditorScreen extends Screen {
+public class CompassEditorScreen extends CompassScreen {
     private final Screen parent;
     private int dragging = 0; // 0 无 / 1 悬浮球 / 2 小框
     private int dragOffX;
